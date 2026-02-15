@@ -2,7 +2,7 @@
 
 **Pull from registry → Verify → Materialize** to Postgres.
 
-Pulls attestations from a Fide attestation registry (e.g., GitHub repo with `fide-attestation-registry` topic, or local `demos/attestor/.fide/attestations/`), verifies signatures, and materializes into `fcp_raw_identifiers` and `fcp_statements`.
+Pulls attestations from a Fide attestation registry (e.g., GitHub repo with `fide-attestation-registry` topic, or local `demos/fide-attestor-template/.fide/attestations/`), verifies signatures, and materializes into `fcp_raw_identifiers` and `fcp_statements`.
 
 | Command | Description |
 |---------|-------------|

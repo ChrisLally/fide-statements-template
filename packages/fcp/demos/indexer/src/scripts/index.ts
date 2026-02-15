@@ -1,7 +1,7 @@
 /**
  * Index FCP attestations
  *
- * 1. Ingest from demos/attestor/.fide/attestations/ (or FCP_ATTESTATIONS_PATH)
+ * 1. Ingest from demos/fide-attestor-template/.fide/attestations/ (or FCP_ATTESTATIONS_PATH)
  * 2. Verify using @fide.work/fcp (buildMerkleTree, verifyAttestation)
  * 3. Materialize to Postgres (placeholder - needs port from legacy)
  *
@@ -31,7 +31,8 @@ import {
 loadDemoEnv();
 
 const ATTESTATIONS_PATH =
-  process.env.FCP_ATTESTATIONS_PATH ?? "demos/attestor/.fide/attestations";
+  process.env.FCP_ATTESTATIONS_PATH ??
+  "demos/fide-attestor-template/.fide/attestations";
 
 /** Find monorepo root (contains pnpm-workspace.yaml) */
 function findRepoRoot(): string {
@@ -125,7 +126,9 @@ async function main() {
   console.log(`Found ${attestations.length} attestation(s)`);
 
   if (attestations.length === 0) {
-    console.log("ℹ No attestations to index. Run pnpm attestor:seed first.");
+    console.log(
+      "ℹ No attestations to index. Run pnpm --filter fide-attestor-template seed first."
+    );
     return;
   }
 
