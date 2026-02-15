@@ -20,6 +20,7 @@ This template is intentionally independent of any specific attestor repo path.
 - Polls Rekor v2 checkpoints + entry bundles (`/checkpoint`, `/tile/entries/...`)
 - Stores cursor at:
   - `packages/fcp/demos/fide-indexer-template/.state/rekor-cursor.json` (default)
+- If no cursor exists, first run auto-bootstraps to a recent window (targeting ~24h) and then continues incrementally.
 
 Optional env:
 
@@ -27,7 +28,7 @@ Optional env:
 - `FCP_REKOR_CURSOR_PATH` (default above)
 - `REKOR_TIMEOUT_MS` (default `20000`)
 
-Note: Rekor mode tails transparency entries and updates cursor. To materialize FCP statements, the indexer must also be able to retrieve attestation artifacts and statement batches.
+Note: Rekor mode is fully independent and tails transparency entries only. It does not persist candidate files; it only updates cursor and logs candidate counts.
 
 ### 2) Filesystem mode
 

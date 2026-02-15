@@ -42,6 +42,10 @@ const REKOR_CURSOR_PATH =
   process.env.FCP_REKOR_CURSOR_PATH ??
   "packages/fcp/demos/fide-indexer-template/.state/rekor-cursor.json";
 const REKOR_TIMEOUT_MS = Number(process.env.REKOR_TIMEOUT_MS ?? "20000");
+// Bootstrap window for first run (no cursor). This targets "about 24h" of recent activity.
+// Rekor does not expose a direct "entries since timestamp" API for monitor reads, so this is
+// an index lookback heuristic.
+const REKOR_BOOTSTRAP_LOOKBACK_ENTRIES = 10000;
 
 interface IndexedStatement {
   s: string;
@@ -94,6 +98,35 @@ function findRepoRoot(): string {
 function toAbsolutePath(pathLike: string): string {
   if (isAbsolute(pathLike)) return pathLike;
   return join(findRepoRoot(), pathLike);
+}
+
+function isHex(value: string, minLen = 1): boolean {
+  return value.length >= minLen && /^[a-fA-F0-9]+$/.test(value);
+}
+
+function isIsoUtc(value: string): boolean {
+  const d = new Date(value);
+  return !Number.isNaN(d.getTime()) && value.includes("T");
+}
+
+function validateStatementSchema(stmt: IndexedStatement): string | null {
+  if (!stmt.s?.startsWith("did:fide:0x")) return "statement.s must be did:fide:0x...";
+  if (!stmt.p?.startsWith("did:fide:0x")) return "statement.p must be did:fide:0x...";
+  if (!stmt.o?.startsWith("did:fide:0x")) return "statement.o must be did:fide:0x...";
+  if (typeof stmt.sr !== "string") return "statement.sr must be string";
+  if (typeof stmt.pr !== "string") return "statement.pr must be string";
+  if (typeof stmt.or !== "string") return "statement.or must be string";
+  return null;
+}
+
+function validateAttestationSchema(a: JSONLStatementAttestation): string | null {
+  const allowedMethods = new Set(["ed25519", "eip712", "eip191", "bip322", "solana:signMessage", "cosmos:ADR-036"]);
+  if (!allowedMethods.has(a.m)) return "attestation.m is unsupported";
+  if (typeof a.u !== "string" || !a.u.includes(":")) return "attestation.u must be CAIP-10-like";
+  if (!isHex(a.r, 64)) return "attestation.r must be hex merkle root";
+  if (!isHex(a.s, 16)) return "attestation.s must be hex signature";
+  if (!isIsoUtc(a.t)) return "attestation.t must be ISO timestamp";
+  return null;
 }
 
 function encodeTileIndex(n: number): string {
@@ -156,15 +189,25 @@ async function saveRekorCursor(cursorPath: string, lastProcessedLogIndex: number
 }
 
 async function pollRekorEntries(): Promise<RekorPolledEntry[]> {
-  const cursorPath = toAbsolutePath(REKOR_CURSOR_PATH);
-  const cursor = await loadRekorCursor(cursorPath);
-
   const checkpointRes = await fetchWithTimeout(REKOR_CHECKPOINT_URL);
   if (!checkpointRes.ok) {
     throw new Error(`Failed to fetch checkpoint (${checkpointRes.status})`);
   }
   const checkpointText = await checkpointRes.text();
   const treeSize = parseCheckpointTreeSize(checkpointText);
+
+  const cursorPath = toAbsolutePath(REKOR_CURSOR_PATH);
+  let cursor = await loadRekorCursor(cursorPath);
+  if (cursor.lastProcessedLogIndex < 0) {
+    const seededLast = Math.max(treeSize - REKOR_BOOTSTRAP_LOOKBACK_ENTRIES - 1, -1);
+    cursor = { lastProcessedLogIndex: seededLast, updatedAt: new Date().toISOString() };
+    await saveRekorCursor(cursorPath, seededLast);
+    const seededStart = seededLast + 1;
+    const seededEnd = Math.max(treeSize - 1, seededStart);
+    console.log(
+      `ℹ No cursor found. Bootstrapped to recent window: entries ${seededStart}..${seededEnd}`
+    );
+  }
 
   const startIndex = cursor.lastProcessedLogIndex + 1;
   const endIndex = treeSize - 1;
@@ -287,14 +330,24 @@ async function ingestFilesystemAttestations(
   console.log(`📄 Only indexing latest attestation: ${latestPath}`);
 
   const attestations: JSONLStatementAttestation[] = [];
+  let invalidAttestations = 0;
   const content = await readFile(latestPath, "utf-8");
   for (const line of content.trim().split("\n")) {
     if (!line) continue;
     try {
-      attestations.push(JSON.parse(line) as JSONLStatementAttestation);
+      const parsed = JSON.parse(line) as JSONLStatementAttestation;
+      const schemaError = validateAttestationSchema(parsed);
+      if (schemaError) {
+        invalidAttestations++;
+        continue;
+      }
+      attestations.push(parsed);
     } catch {
       // skip malformed lines
     }
+  }
+  if (invalidAttestations > 0) {
+    console.log(`⚠ Skipped ${invalidAttestations} attestation(s) failing schema policy`);
   }
 
   const hydrated: HydratedAttestation[] = [];
@@ -346,13 +399,23 @@ async function loadStatementsByMerkleRoot(
   const content = await readFile(latestPath, "utf-8");
 
   const statements: IndexedStatement[] = [];
+  let invalidStatements = 0;
   for (const line of content.trim().split("\n")) {
     if (!line) continue;
     try {
-      statements.push(JSON.parse(line) as IndexedStatement);
+      const parsed = JSON.parse(line) as IndexedStatement;
+      const schemaError = validateStatementSchema(parsed);
+      if (schemaError) {
+        invalidStatements++;
+        continue;
+      }
+      statements.push(parsed);
     } catch {
       // skip malformed lines
     }
+  }
+  if (invalidStatements > 0) {
+    console.log(`⚠ Skipped ${invalidStatements} statement(s) failing schema policy (${merkleRoot})`);
   }
 
   return statements;
@@ -492,6 +555,22 @@ function extractKind(entry: unknown): string | null {
   return typeof maybeKind === "string" ? maybeKind : null;
 }
 
+function extractApiVersion(entry: unknown): string | null {
+  if (!entry || typeof entry !== "object") return null;
+  const maybe = (entry as Record<string, unknown>).apiVersion;
+  return typeof maybe === "string" ? maybe : null;
+}
+
+function extractHashedRekordDigestB64(entry: unknown): string | null {
+  if (!entry || typeof entry !== "object") return null;
+  const obj = entry as Record<string, unknown>;
+  const spec = obj.spec as Record<string, unknown> | undefined;
+  const hr = spec?.hashedRekordV002 as Record<string, unknown> | undefined;
+  const data = hr?.data as Record<string, unknown> | undefined;
+  const digest = data?.digest;
+  return typeof digest === "string" ? digest : null;
+}
+
 async function main() {
   const mode = parseSourceMode(SOURCE_MODE);
   console.log(`📥 Indexing (${mode} mode)...\n`);
@@ -499,21 +578,11 @@ async function main() {
   if (mode === "rekor") {
     const entries = await pollRekorEntries();
     if (entries.length === 0) return;
-
-    const kindCounts = new Map<string, number>();
-    for (const e of entries) {
-      const kind = extractKind(e.entry) ?? "unknown";
-      kindCounts.set(kind, (kindCounts.get(kind) ?? 0) + 1);
-    }
-
-    console.log("Kinds seen:");
-    for (const [k, n] of kindCounts.entries()) {
-      console.log(`  - ${k}: ${n}`);
-    }
-
+    const candidateCount = entries.filter((e) => !!extractHashedRekordDigestB64(e.entry)).length;
+    console.log(`✓ Candidate hashedrekord entries: ${candidateCount}`);
     console.log(
-      "\nℹ Rekor mode tails transparency entries and updates a cursor. " +
-        "Materializing FCP statements requires retrievable attestation artifacts (e.g., filesystem or repository fetch layer)."
+      "ℹ Independent mode: no candidate files are persisted. " +
+        "Attach an artifact resolver later to fetch and validate FCP content."
     );
     return;
   }
