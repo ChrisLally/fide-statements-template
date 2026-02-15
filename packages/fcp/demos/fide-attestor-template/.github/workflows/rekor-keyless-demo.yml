@@ -88,24 +88,28 @@ jobs:
           {
             "dsseRequestV002": {
               "envelope": ${ENVELOPE_JSON},
-              "verifiers": [
-                {
-                  "x509Certificate": {
-                    "rawBytes": "${CERT_B64}"
-                  },
-                  "keyDetails": "PKIX_ECDSA_P256_SHA_256"
-                }
-              ]
+              "verifier": {
+                "x509Certificate": {
+                  "rawBytes": "${CERT_B64}"
+                },
+                "keyDetails": "PKIX_ECDSA_P256_SHA_256"
+              }
             }
           }
           EOF
 
-          response="$(curl --fail-with-body -sS -X POST \
+          http_code="$(curl -sS -o rekor_http_response.json -w "%{http_code}" -X POST \
             -H "Content-Type: application/json" \
             -H "Accept: application/json" \
             --data @rekor_v2_payload.json \
             "${REKOR_V2_URL}/api/v2/log/entries")"
-          echo "${response}" > "${rekor}"
+          if [ "${http_code}" -lt 200 ] || [ "${http_code}" -ge 300 ]; then
+            echo "Rekor v2 upload failed with HTTP ${http_code}"
+            cat rekor_http_response.json
+            exit 1
+          fi
+
+          cp rekor_http_response.json "${rekor}"
           cp "${rekor}" ".fide/rekor-proofs/latest.rekor-v2.json"
           cp "${bundle}" ".fide/rekor-proofs/latest.attestation.sigstore.json"
           echo "bundle=${bundle}" >> "$GITHUB_OUTPUT"
