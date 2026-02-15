@@ -57,6 +57,7 @@ jobs:
           bundle="${outdir}/${stamp}-${short}.attestation.sigstore.json"
           rekor="${outdir}/${stamp}-${short}.attestation.rekor-v2.json"
           cert_file="${outdir}/${stamp}-${short}.cert.pem"
+          envelope_file="${outdir}/${stamp}-${short}.envelope.json"
 
           node -e "const fs=require('fs'); const p=process.env.ATTESTATION_FILE; const line=fs.readFileSync(p,'utf8').trim().split('\n')[0]; const a=JSON.parse(line); const pred={attestation:{m:a.m,u:a.u,r:a.r,s:a.s,t:a.t},source:{path:p}}; fs.writeFileSync('predicate.json', JSON.stringify(pred));"
 
@@ -67,7 +68,7 @@ jobs:
             --type "${FCP_PREDICATE_TYPE}" \
             --bundle "${bundle}" \
             --output-certificate "${cert_file}" \
-            "${ATTESTATION_FILE}"
+            "${ATTESTATION_FILE}" > "${envelope_file}"
 
           RAW_ENVELOPE_JSON="$(jq -c '
             first(
@@ -78,9 +79,23 @@ jobs:
                 (has("payload") or has("base64Payload") or has("payloadBytes"))
               )
             ) // empty
-          ' "${bundle}")"
+          ' "${envelope_file}" 2>/dev/null || true)"
+          if [ -z "${RAW_ENVELOPE_JSON}" ]; then
+            RAW_ENVELOPE_JSON="$(jq -c '
+              first(
+                .. | objects |
+                select(
+                  (has("payloadType") or has("payload_type")) and
+                  has("signatures") and
+                  (has("payload") or has("base64Payload") or has("payloadBytes"))
+                )
+              ) // empty
+            ' "${bundle}" 2>/dev/null || true)"
+          fi
           if [ -z "${RAW_ENVELOPE_JSON}" ]; then
             echo "Could not find DSSE envelope in bundle JSON"
+            echo "Envelope file top-level keys:"
+            jq -c 'keys' "${envelope_file}" || true
             echo "Bundle top-level keys:"
             jq -c 'keys' "${bundle}" || true
             exit 1
