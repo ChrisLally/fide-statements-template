@@ -41,12 +41,13 @@ jobs:
           echo "file=${latest}" >> "$GITHUB_OUTPUT"
           echo "Latest file: ${latest}"
 
-      - name: Attest blob keylessly as DSSE (uploads to Rekor)
+      - name: Attest blob keylessly as DSSE (Rekor v2 hybrid)
         id: sign
         shell: bash
         env:
           ATTESTATION_FILE: ${{ steps.latest.outputs.file }}
           FCP_PREDICATE_TYPE: https://fide.work/fcp/predicate/statement-attestation/v1
+          REKOR_V2_URL: https://log2025-1.rekor.sigstore.dev
         run: |
           set -euo pipefail
           stamp="$(date -u +%Y-%m-%d-%H%M)"
@@ -54,34 +55,55 @@ jobs:
           outdir=".fide/rekor-proofs/$(date -u +%Y/%m/%d)"
           mkdir -p "${outdir}"
           bundle="${outdir}/${stamp}-${short}.attestation.sigstore.json"
-
-          cat > rekor-v2-signing-config.json <<'JSON'
-          {
-            "tlogUrls": [
-              {
-                "url": "https://log2025-1.rekor.sigstore.dev",
-                "majorApiVersion": 2,
-                "operator": "sigstore.dev",
-                "validFor": {
-                  "start": "2025-10-06T00:00:00Z"
-                }
-              }
-            ]
-          }
-          JSON
+          rekor="${outdir}/${stamp}-${short}.attestation.rekor-v2.json"
 
           node -e "const fs=require('fs'); const p=process.env.ATTESTATION_FILE; const line=fs.readFileSync(p,'utf8').trim().split('\n')[0]; const a=JSON.parse(line); const pred={attestation:{m:a.m,u:a.u,r:a.r,s:a.s,t:a.t},source:{path:p}}; fs.writeFileSync('predicate.json', JSON.stringify(pred));"
 
           cosign attest-blob \
             --yes \
-            --signing-config rekor-v2-signing-config.json \
+            --tlog-upload=false \
             --predicate predicate.json \
             --type "${FCP_PREDICATE_TYPE}" \
             --bundle "${bundle}" \
             "${ATTESTATION_FILE}"
 
+          ENVELOPE_JSON="$(jq -c '.dsseEnvelope' "${bundle}")"
+          CERT_B64="$(jq -r '.verificationMaterial.certificate.rawBytes' "${bundle}")"
+          if [ -z "${ENVELOPE_JSON}" ] || [ "${ENVELOPE_JSON}" = "null" ]; then
+            echo "Missing dsseEnvelope in bundle"
+            exit 1
+          fi
+          if [ -z "${CERT_B64}" ] || [ "${CERT_B64}" = "null" ]; then
+            echo "Missing certificate.rawBytes in bundle"
+            exit 1
+          fi
+
+          cat > rekor_v2_payload.json <<EOF
+          {
+            "dsseRequestV002": {
+              "envelope": ${ENVELOPE_JSON},
+              "verifiers": [
+                {
+                  "x509Certificate": {
+                    "rawBytes": "${CERT_B64}"
+                  }
+                }
+              ]
+            }
+          }
+          EOF
+
+          response="$(curl --fail-with-body -sS -X POST \
+            -H "Content-Type: application/json" \
+            -H "Accept: application/json" \
+            --data @rekor_v2_payload.json \
+            "${REKOR_V2_URL}/api/v2/log/entries")"
+          echo "${response}" > "${rekor}"
+          cp "${rekor}" ".fide/rekor-proofs/latest.rekor-v2.json"
           cp "${bundle}" ".fide/rekor-proofs/latest.attestation.sigstore.json"
           echo "bundle=${bundle}" >> "$GITHUB_OUTPUT"
+          echo "rekor=${rekor}" >> "$GITHUB_OUTPUT"
+          echo "Rekor response: ${rekor}"
           echo "Bundle: ${bundle}"
 
       - name: Verify DSSE attestation and GitHub workflow identity
@@ -94,6 +116,7 @@ jobs:
         run: |
           set -euo pipefail
           cosign verify-blob-attestation \
+            --insecure-ignore-tlog \
             --bundle "${BUNDLE_FILE}" \
             --type "${FCP_PREDICATE_TYPE}" \
             --certificate-identity-regexp "${CERT_ID_RE}" \
