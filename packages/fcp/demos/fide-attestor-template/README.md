@@ -11,7 +11,7 @@ Creates statements, signs batches with Ed25519 (zero-dependency), and writes:
 | Command | Description |
 |---------|-------------|
 | `pnpm seed` | Seed test statements, sign with Ed25519, write `.fide/statements` and `.fide/statement-attestations` |
-| `pnpm rekor` | Submit latest statement-attestation JSONL artifact to Rekor v2 and write `.fide/rekor-proofs` |
+| `pnpm rekor` | Submit latest statement-attestation as DSSE/in-toto to Rekor v2 and write `.fide/rekor-proofs` |
 
 ## Setup
 
@@ -44,3 +44,7 @@ Template includes a keyless Sigstore workflow:
 - `.github/workflows/rekor-keyless-demo.yml`
 
 It signs the latest `.fide/statement-attestations/*.jsonl` with GitHub OIDC identity, uploads to Rekor, verifies certificate identity constraints, and uploads proof artifacts.
+
+Local `pnpm rekor` uses DSSE/in-toto format (`dsseRequestV002`) with FCP predicate type:
+
+- `https://fide.work/fcp/predicate/statement-attestation/v1`

@@ -1,14 +1,21 @@
 /**
- * Submit latest statement-attestation artifact to Rekor v2.
+ * Submit latest FCP statement-attestation to Rekor v2 as DSSE/in-toto.
  *
  * Flow:
  * 1. Read latest .fide/statement-attestations/.../*.jsonl
- * 2. SHA-256 digest + ECDSA P-256 signature (local witness key)
- * 3. POST to /api/v2/log/entries (hashedRekordRequestV002)
- * 4. Write response/proof JSON to .fide/rekor-proofs/YYYY/MM/DD/
+ * 2. Build in-toto Statement payload with explicit FCP predicate type
+ * 3. Wrap payload in DSSE envelope and sign (ECDSA P-256)
+ * 4. POST /api/v2/log/entries with dsseRequestV002
+ * 5. Write response/proof JSON to .fide/rekor-proofs/YYYY/MM/DD/
  */
 
-import { createHash, createSign, createPrivateKey, createPublicKey, generateKeyPairSync } from "node:crypto";
+import {
+  createHash,
+  createSign,
+  createPrivateKey,
+  createPublicKey,
+  generateKeyPairSync,
+} from "node:crypto";
 import { readdir, readFile, mkdir, writeFile } from "node:fs/promises";
 import type { Dirent } from "node:fs";
 import { dirname, join, basename } from "node:path";
@@ -32,6 +39,8 @@ const REKOR_BASE_URL = (process.env.REKOR_BASE_URL ?? "https://log2025-1.rekor.s
 const REKOR_ENTRIES_URL = `${REKOR_BASE_URL}/api/v2/log/entries`;
 const REKOR_TIMEOUT_MS = Number(process.env.REKOR_TIMEOUT_MS ?? "30000");
 const REKOR_KEY_DETAILS = process.env.REKOR_KEY_DETAILS ?? "PKIX_ECDSA_P256_SHA_256";
+const DSSE_PAYLOAD_TYPE = "application/vnd.in-toto+json";
+const FCP_PREDICATE_TYPE = "https://fide.work/fcp/predicate/statement-attestation/v1";
 
 interface StatementAttestationLine {
   m: string;
@@ -102,8 +111,23 @@ function parseAttestationShortFromFilename(path: string, fallbackRoot: string): 
   return fallbackRoot.slice(0, 12);
 }
 
+function makeDSSEPAE(payloadType: string, payloadBytes: Uint8Array): Buffer {
+  const pt = Buffer.from(payloadType, "utf8");
+  const parts = [
+    Buffer.from("DSSEv1 ", "utf8"),
+    Buffer.from(String(pt.length), "utf8"),
+    Buffer.from(" ", "utf8"),
+    pt,
+    Buffer.from(" ", "utf8"),
+    Buffer.from(String(payloadBytes.length), "utf8"),
+    Buffer.from(" ", "utf8"),
+    Buffer.from(payloadBytes),
+  ];
+  return Buffer.concat(parts);
+}
+
 async function main() {
-  console.log("📡 Rekor submit (v2) from latest statement-attestation\n");
+  console.log("📡 Rekor submit (v2 DSSE/in-toto) from latest statement-attestation\n");
   console.log("   Rekor URL:", REKOR_ENTRIES_URL);
 
   const latestPath = await findLatestJsonl(STATEMENT_ATTESTATIONS_PATH);
@@ -122,45 +146,83 @@ async function main() {
   const firstLine = artifactText.split("\n")[0]!;
   const attestation = JSON.parse(firstLine) as StatementAttestationLine;
 
-  const digestBytes = createHash("sha256").update(artifactBytes).digest();
-  const digestHex = bytesToHex(digestBytes);
+  const artifactDigestBytes = createHash("sha256").update(artifactBytes).digest();
+  const artifactDigestHex = bytesToHex(artifactDigestBytes);
 
   const privatePem = process.env.REKOR_ECDSA_PRIVATE_KEY_PEM;
   const publicPem = process.env.REKOR_ECDSA_PUBLIC_KEY_PEM;
-  const keyPair = privatePem && publicPem
-    ? {
-        privateKey: createPrivateKey(privatePem),
-        publicKey: createPublicKey(publicPem),
-        generated: false,
-      }
-    : (() => {
-        const { privateKey, publicKey } = generateKeyPairSync("ec", { namedCurve: "prime256v1" });
-        return { privateKey, publicKey, generated: true };
-      })();
+  const keyPair =
+    privatePem && publicPem
+      ? {
+          privateKey: createPrivateKey(privatePem),
+          publicKey: createPublicKey(publicPem),
+          generated: false,
+        }
+      : (() => {
+          const { privateKey, publicKey } = generateKeyPairSync("ec", { namedCurve: "prime256v1" });
+          return { privateKey, publicKey, generated: true };
+        })();
 
+  const inTotoStatement = {
+    _type: "https://in-toto.io/Statement/v1",
+    subject: [
+      {
+        name: basename(latestPath),
+        digest: {
+          sha256: artifactDigestHex,
+        },
+      },
+    ],
+    predicateType: FCP_PREDICATE_TYPE,
+    predicate: {
+      attestation: {
+        m: attestation.m,
+        u: attestation.u,
+        r: attestation.r,
+        s: attestation.s,
+        t: attestation.t,
+      },
+      source: {
+        path: latestPath,
+      },
+    },
+  };
+
+  const payloadBytes = Buffer.from(JSON.stringify(inTotoStatement), "utf8");
+  const pae = makeDSSEPAE(DSSE_PAYLOAD_TYPE, payloadBytes);
   const signer = createSign("sha256");
-  signer.update(artifactBytes);
+  signer.update(pae);
   signer.end();
-  const signatureBytes = signer.sign(keyPair.privateKey);
+  const dsseSignatureBytes = signer.sign(keyPair.privateKey);
   const publicKeyDer = keyPair.publicKey.export({ type: "spki", format: "der" });
 
   const payload = {
-    hashedRekordRequestV002: {
-      digest: bytesToBase64(digestBytes),
-      signature: {
-        content: bytesToBase64(signatureBytes),
-        verifier: {
+    dsseRequestV002: {
+      envelope: {
+        payload: bytesToBase64(payloadBytes),
+        payloadType: DSSE_PAYLOAD_TYPE,
+        signatures: [
+          {
+            sig: bytesToBase64(dsseSignatureBytes),
+            keyid: "",
+          },
+        ],
+      },
+      verifiers: [
+        {
           publicKey: {
             rawBytes: bytesToBase64(publicKeyDer),
           },
           keyDetails: REKOR_KEY_DETAILS,
         },
-      },
+      ],
     },
   };
 
   console.log("   Artifact:", latestPath);
-  console.log("   SHA256:", digestHex);
+  console.log("   Artifact SHA256:", artifactDigestHex);
+  console.log("   DSSE payload type:", DSSE_PAYLOAD_TYPE);
+  console.log("   Predicate type:", FCP_PREDICATE_TYPE);
   console.log("   Key:", keyPair.generated ? "generated ephemeral P-256 key" : "env-provided P-256 key");
   console.log("   Submitting...");
 
@@ -192,6 +254,7 @@ async function main() {
 
   const proofRecord = {
     submittedAt: now.toISOString(),
+    mode: "dsse",
     rekor: {
       url: REKOR_ENTRIES_URL,
       status: response.status,
@@ -200,13 +263,11 @@ async function main() {
     artifact: {
       path: latestPath,
       sizeBytes: artifactBytes.length,
-      sha256: digestHex,
+      sha256: artifactDigestHex,
     },
-    attestation: {
-      root: attestation.r,
-      method: attestation.m,
-      user: attestation.u,
-      signedAt: attestation.t,
+    inToto: {
+      payloadType: DSSE_PAYLOAD_TYPE,
+      predicateType: FCP_PREDICATE_TYPE,
     },
     request: payload,
     response: bodyJson,
@@ -221,7 +282,7 @@ async function main() {
     process.exit(1);
   }
 
-  console.log("✅ Rekor submit succeeded");
+  console.log("✅ Rekor DSSE submit succeeded");
   console.log("   Saved proof:", outFile);
   console.log("   Latest proof:", latestFile);
 }
@@ -230,4 +291,3 @@ main().catch((err) => {
   console.error("❌ Rekor submit error:", err);
   process.exit(1);
 });
-
