@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "prebuild": "pnpm --filter api openapi:export && pnpm sdk:generate",
+    "prebuild": "pnpm --filter @fide.work/fcp build && pnpm --filter @fide.work/db build && pnpm --filter api openapi:export && pnpm sdk:generate",
     "sdk:generate": "tsx scripts/fcp/sdks/js/generate-sdk-reference.ts",
     "build": "next build",
     "dev": "next dev",

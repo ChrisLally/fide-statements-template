@@ -41,9 +41,9 @@ pnpm build
 pnpm check-types
 ```
 
-## Next Migration Step
+## Current Status
 
-Move one vertical slice at a time (for example `packages/fcp`) and validate after each move.
+Core slices (`apps/docs`, `apps/api`, `packages/fcp`, `packages/db`) are now integrated into this root Turborepo and validated via root workspace commands.
 
 ## Future Export Plan
 
