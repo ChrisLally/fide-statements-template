@@ -82,28 +82,28 @@ const productCards: FeatureCard[] = [
     title: "Fide Workspace",
     description:
       "Mission Control for human-AI teams. Manage agents, view decision traces, and set trust boundaries.",
-    href: "/docs/workspace",
+    href: "/workspace",
     icon: Users,
   },
   {
     title: "Fide Graph",
     description:
       "The memory engine. A unified World Model combining the Global Graph with your private Workspace Graph.",
-    href: "/docs/graph",
+    href: "/graph",
     icon: Database,
   },
   {
     title: "Fide Gateway",
     description:
       "The intelligent router. It secures each request, injects the right context, and records a clear decision trace.",
-    href: "/docs/gateway",
+    href: "/gateway",
     icon: Router,
   },
   {
     title: "Context Protocol (FCP)",
     description:
       "The open standard for verifiable truth. Cryptographic proofs and schema definitions.",
-    href: "/docs/fcp",
+    href: "/fcp",
     icon: Shield,
   }
 ];
@@ -257,10 +257,10 @@ export default function HomePage() {
             </span>
           </h1>
           <p className="max-w-2xl text-sm leading-7 text-muted-foreground">
-            Build trusted human-AI systems with Fide Graph (memory), Fide Gateway (routing and access), and FCP (protocol).
+            Build trusted human-AI teams with The Fide Workspace (co-working), Gateway (routing and access), Graph (context graph), and Context Protocol (context graph rules).
           </p>
         </div>
-{/* 
+
         <Card className="gap-2 py-4">
           <CardHeader className="gap-1">
             <CardTitle className="flex items-center gap-2 text-2xl">
@@ -268,7 +268,7 @@ export default function HomePage() {
               Getting Started
             </CardTitle>
             <CardDescription>
-              Deploy your first Agent Identity and connect it to the Graph in under 5 minutes.
+              Tell OpenClaw, Claude Code, any AI agents to read the Fide Docs and get you started.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -293,7 +293,7 @@ export default function HomePage() {
               <ArrowRight className="size-4" />
             </Button>
           </CardContent>
-        </Card> */}
+        </Card>
       </section>
 
       <Separator />
