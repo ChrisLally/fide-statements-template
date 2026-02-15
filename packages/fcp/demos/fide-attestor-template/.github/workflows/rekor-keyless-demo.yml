@@ -130,12 +130,14 @@ jobs:
           {
             "dsseRequestV002": {
               "envelope": ${ENVELOPE_JSON},
-              "verifier": {
-                "x509Certificate": {
-                  "rawBytes": "${CERT_B64}"
-                },
-                "keyDetails": "PKIX_ECDSA_P256_SHA_256"
-              }
+              "verifiers": [
+                {
+                  "x509Certificate": {
+                    "rawBytes": "${CERT_B64}"
+                  },
+                  "keyDetails": "PKIX_ECDSA_P256_SHA_256"
+                }
+              ]
             }
           }
           EOF
