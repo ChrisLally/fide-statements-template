@@ -74,9 +74,25 @@ jobs:
           else
             ENVELOPE_JSON="$(jq -c '.' "${bundle}")"
           fi
+
+          ENVELOPE_JSON="$(jq -cn --argjson e "${ENVELOPE_JSON}" '
+            {
+              payload: ($e.payload // $e.base64Payload),
+              payloadType: ($e.payloadType // $e.payload_type),
+              signatures: (($e.signatures // []) | map({
+                sig: (.sig // .base64Signature),
+                keyid: (.keyid // .keyId // "")
+              }))
+            }
+          ')"
           CERT_B64="$(openssl x509 -in "${cert_file}" -outform DER | base64 -w0)"
           if [ -z "${ENVELOPE_JSON}" ] || [ "${ENVELOPE_JSON}" = "null" ]; then
             echo "Missing dsseEnvelope in bundle"
+            exit 1
+          fi
+          if ! jq -e '.payload and .payloadType and (.signatures | length > 0) and (.signatures | all(.sig))' >/dev/null 2>&1 <<<"${ENVELOPE_JSON}"; then
+            echo "Normalized envelope missing required DSSE fields"
+            echo "${ENVELOPE_JSON}"
             exit 1
           fi
           if [ -z "${CERT_B64}" ] || [ "${CERT_B64}" = "null" ]; then
