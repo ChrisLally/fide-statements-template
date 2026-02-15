@@ -62,6 +62,7 @@ import {
   HoverCardTrigger,
 } from "@/components/ui/hover-card";
 import { Separator } from "@/components/ui/separator";
+import { PromptTabs } from "@/components/mdx/prompt-tabs";
 
 type FeatureCard = {
   title: string;
@@ -197,28 +198,28 @@ const gettingStartedTiles = [
   { label: "Python", icon: Terminal },
 ];
 
-function IconChip({ item }: { item: ChipLink }) {
-  const Icon = item.icon;
+// function IconChip({ item }: { item: ChipLink }) {
+//   const Icon = item.icon;
 
-  return (
-    <HoverCard openDelay={100}>
-      <HoverCardTrigger asChild>
-        <Link href={item.href}>
-          <Badge variant="outline" className="h-9 gap-2 px-3 py-0 text-sm font-normal">
-            <Icon className="size-3.5" />
-            {item.label}
-          </Badge>
-        </Link>
-      </HoverCardTrigger>
-      <HoverCardContent className="w-72">
-        <p className="text-sm font-medium">{item.label}</p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {item.description ?? `Open ${item.label} documentation.`}
-        </p>
-      </HoverCardContent>
-    </HoverCard>
-  );
-}
+//   return (
+//     <HoverCard openDelay={100}>
+//       <HoverCardTrigger asChild>
+//         <Link href={item.href}>
+//           <Badge variant="outline" className="h-9 gap-2 px-3 py-0 text-sm font-normal">
+//             <Icon className="size-3.5" />
+//             {item.label}
+//           </Badge>
+//         </Link>
+//       </HoverCardTrigger>
+//       <HoverCardContent className="w-72">
+//         <p className="text-sm font-medium">{item.label}</p>
+//         <p className="mt-1 text-sm text-muted-foreground">
+//           {item.description ?? `Open ${item.label} documentation.`}
+//         </p>
+//       </HoverCardContent>
+//     </HoverCard>
+//   );
+// }
 
 function Feature({ item }: { item: FeatureCard }) {
   const Icon = item.icon;
@@ -268,30 +269,12 @@ export default function HomePage() {
               Getting Started
             </CardTitle>
             <CardDescription>
-              Tell OpenClaw, Claude Code, any AI agents to read the Fide Docs and get you started.
+            Copy a ready-to-use prompt for your coding assistant to read the Fide docs and get you started. (≈50k tokens of context)
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="grid grid-cols-5 gap-2">
-              {gettingStartedTiles.map((item) => {
-                const Icon = item.icon;
-                return (
-                <Button
-                  key={item.label}
-                  variant="outline"
-                  size="icon"
-                  className="size-12"
-                  aria-label={item.label}
-                >
-                  <Icon className="size-4" />
-                </Button>
-                );
-              })}
-            </div>
-            <Button variant="outline" className="h-8 w-full justify-between text-xs">
-              Start with Fide AI prompts
-              <ArrowRight className="size-4" />
-            </Button>
+  
+            <PromptTabs />
           </CardContent>
         </Card>
       </section>
