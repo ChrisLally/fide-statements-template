@@ -69,15 +69,26 @@ jobs:
             --output-certificate "${cert_file}" \
             "${ATTESTATION_FILE}"
 
-          if jq -e '.dsseEnvelope' "${bundle}" >/dev/null 2>&1; then
-            ENVELOPE_JSON="$(jq -c '.dsseEnvelope' "${bundle}")"
-          else
-            ENVELOPE_JSON="$(jq -c '.' "${bundle}")"
+          RAW_ENVELOPE_JSON="$(jq -c '
+            first(
+              .. | objects |
+              select(
+                (has("payloadType") or has("payload_type")) and
+                has("signatures") and
+                (has("payload") or has("base64Payload") or has("payloadBytes"))
+              )
+            ) // empty
+          ' "${bundle}")"
+          if [ -z "${RAW_ENVELOPE_JSON}" ]; then
+            echo "Could not find DSSE envelope in bundle JSON"
+            echo "Bundle top-level keys:"
+            jq -c 'keys' "${bundle}" || true
+            exit 1
           fi
 
-          ENVELOPE_JSON="$(jq -cn --argjson e "${ENVELOPE_JSON}" '
+          ENVELOPE_JSON="$(jq -cn --argjson e "${RAW_ENVELOPE_JSON}" '
             {
-              payload: ($e.payload // $e.base64Payload),
+              payload: ($e.payload // $e.base64Payload // $e.payloadBytes),
               payloadType: ($e.payloadType // $e.payload_type),
               signatures: (($e.signatures // []) | map({
                 sig: (.sig // .base64Signature),
