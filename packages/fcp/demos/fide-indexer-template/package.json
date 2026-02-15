@@ -8,6 +8,7 @@
     "index": "tsx src/scripts/index.ts",
     "index:rekor": "FCP_INDEXER_SOURCE_MODE=rekor tsx src/scripts/index.ts",
     "index:filesystem": "FCP_INDEXER_SOURCE_MODE=filesystem tsx src/scripts/index.ts",
+    "index:discover": "tsx src/scripts/discover.ts",
     "schema:reset": "tsx src/scripts/migrate.ts",
     "reset": "tsx src/scripts/reset.ts"
   },

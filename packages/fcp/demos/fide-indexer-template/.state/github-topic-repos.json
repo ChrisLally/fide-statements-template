@@ -1,0 +1,15 @@
+{
+  "generatedAt": "2026-02-15T22:26:56.857Z",
+  "topic": "fide-context-registry",
+  "count": 1,
+  "repos": [
+    {
+      "fullName": "ChrisLally/fide-attestor-template",
+      "htmlUrl": "https://github.com/ChrisLally/fide-attestor-template",
+      "cloneUrl": "https://github.com/ChrisLally/fide-attestor-template.git",
+      "defaultBranch": "main",
+      "private": false,
+      "pushedAt": "2026-02-15T20:51:33Z"
+    }
+  ]
+}

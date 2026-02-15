@@ -14,6 +14,7 @@
     "demo:fide-indexer-template:index": "pnpm --filter fide-indexer-template index",
     "demo:fide-indexer-template:rekor": "pnpm --filter fide-indexer-template index:rekor",
     "demo:fide-indexer-template:filesystem": "pnpm --filter fide-indexer-template index:filesystem",
+    "demo:fide-indexer-template:discover": "pnpm --filter fide-indexer-template index:discover",
     "subtree:fide-attestor-template:push": "bash scripts/subtree/fide-attestor-template-push.sh",
     "subtree:fide-attestor-template:pull": "bash scripts/subtree/fide-attestor-template-pull.sh"
   },

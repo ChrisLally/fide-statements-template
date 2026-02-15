@@ -13,6 +13,7 @@ import { existsSync } from "node:fs";
 import type { Dirent } from "node:fs";
 import { join, isAbsolute, dirname } from "node:path";
 import { Buffer } from "node:buffer";
+import { X509Certificate } from "node:crypto";
 import { Pool } from "pg";
 import { getPgConnectionUrl } from "../lib/db.js";
 import { loadDemoEnv } from "../lib/env.js";
@@ -46,6 +47,13 @@ const REKOR_TIMEOUT_MS = Number(process.env.REKOR_TIMEOUT_MS ?? "20000");
 // Rekor does not expose a direct "entries since timestamp" API for monitor reads, so this is
 // an index lookback heuristic.
 const REKOR_BOOTSTRAP_LOOKBACK_ENTRIES = 10000;
+const DISCOVERED_REPOS_PATH =
+  process.env.FCP_DISCOVER_OUTPUT_PATH ??
+  "packages/fcp/demos/fide-indexer-template/.state/github-topic-repos.json";
+const FCP_REKOR_DSSE_PUBLIC_KEY_RAW_B64 =
+  process.env.FCP_REKOR_DSSE_PUBLIC_KEY_RAW_B64 ?? "";
+const FCP_REKOR_DSSE_PAYLOAD_HASH_B64 =
+  process.env.FCP_REKOR_DSSE_PAYLOAD_HASH_B64 ?? "";
 
 interface IndexedStatement {
   s: string;
@@ -77,6 +85,12 @@ interface RekorCursor {
 interface RekorPolledEntry {
   logIndex: number;
   entry: unknown;
+}
+
+interface DiscoveredReposFile {
+  repos?: Array<{
+    fullName?: string;
+  }>;
 }
 
 function parseSourceMode(value: string): SourceMode {
@@ -571,6 +585,114 @@ function extractHashedRekordDigestB64(entry: unknown): string | null {
   return typeof digest === "string" ? digest : null;
 }
 
+function extractDssePayloadHashB64(entry: unknown): string | null {
+  if (!entry || typeof entry !== "object") return null;
+  const obj = entry as Record<string, unknown>;
+  if (obj.kind !== "dsse") return null;
+  const spec = obj.spec as Record<string, unknown> | undefined;
+  const dsse = spec?.dsseV002 as Record<string, unknown> | undefined;
+  const payloadHash = dsse?.payloadHash as Record<string, unknown> | undefined;
+  const digest = payloadHash?.digest;
+  return typeof digest === "string" ? digest : null;
+}
+
+function extractDsseVerifierPublicKeyRawB64(entry: unknown): string | null {
+  if (!entry || typeof entry !== "object") return null;
+  const obj = entry as Record<string, unknown>;
+  if (obj.kind !== "dsse") return null;
+  const spec = obj.spec as Record<string, unknown> | undefined;
+  const dsse = spec?.dsseV002 as Record<string, unknown> | undefined;
+  const signatures = dsse?.signatures as unknown;
+  if (!Array.isArray(signatures) || signatures.length === 0) return null;
+  const sig0 = signatures[0] as Record<string, unknown>;
+  const verifier = sig0?.verifier as Record<string, unknown> | undefined;
+  const publicKey = verifier?.publicKey as Record<string, unknown> | undefined;
+  const rawBytes = publicKey?.rawBytes;
+  return typeof rawBytes === "string" ? rawBytes : null;
+}
+
+function findDsseMatches(entries: RekorPolledEntry[]): Array<{
+  logIndex: number;
+  payloadHashB64: string | null;
+  verifierPublicKeyRawB64: string | null;
+}> {
+  const requirePk = FCP_REKOR_DSSE_PUBLIC_KEY_RAW_B64.trim();
+  const requirePayloadHash = FCP_REKOR_DSSE_PAYLOAD_HASH_B64.trim();
+  if (!requirePk && !requirePayloadHash) return [];
+
+  return entries
+    .map((e) => {
+      const payloadHashB64 = extractDssePayloadHashB64(e.entry);
+      const verifierPublicKeyRawB64 = extractDsseVerifierPublicKeyRawB64(e.entry);
+      if (payloadHashB64 === null && verifierPublicKeyRawB64 === null) return null;
+      if (requirePk && verifierPublicKeyRawB64 !== requirePk) return null;
+      if (requirePayloadHash && payloadHashB64 !== requirePayloadHash) return null;
+      return { logIndex: e.logIndex, payloadHashB64, verifierPublicKeyRawB64 };
+    })
+    .filter((x): x is NonNullable<typeof x> => !!x);
+}
+
+function extractDsseVerifierCertRawB64(entry: unknown): string | null {
+  if (!entry || typeof entry !== "object") return null;
+  const obj = entry as Record<string, unknown>;
+  if (obj.kind !== "dsse") return null;
+  const spec = obj.spec as Record<string, unknown> | undefined;
+  const dsse = spec?.dsseV002 as Record<string, unknown> | undefined;
+  const signatures = dsse?.signatures as unknown;
+  if (!Array.isArray(signatures) || signatures.length === 0) return null;
+  const sig0 = signatures[0] as Record<string, unknown>;
+  const verifier = sig0?.verifier as Record<string, unknown> | undefined;
+  const x509 = verifier?.x509Certificate as Record<string, unknown> | undefined;
+  const rawBytes = x509?.rawBytes;
+  return typeof rawBytes === "string" ? rawBytes : null;
+}
+
+function extractGithubRepoFromCertIdentityUri(uri: string): string | null {
+  // Expected shape:
+  // https://github.com/OWNER/REPO/.github/workflows/<file>@refs/...
+  const m = uri.match(/^https:\/\/github\.com\/([^/]+)\/([^/]+)\/\.github\/workflows\/.+@refs\/.+$/);
+  if (!m) return null;
+  return `${m[1]}/${m[2]}`;
+}
+
+function extractGithubRepoFromDsseCert(entry: unknown): string | null {
+  const certRawB64 = extractDsseVerifierCertRawB64(entry);
+  if (!certRawB64) return null;
+  try {
+    const certDer = Buffer.from(certRawB64, "base64");
+    const cert = new X509Certificate(certDer);
+    const san = cert.subjectAltName ?? "";
+    const parts = san
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    for (const p of parts) {
+      if (!p.startsWith("URI:")) continue;
+      const uri = p.slice(4);
+      const repo = extractGithubRepoFromCertIdentityUri(uri);
+      if (repo) return repo;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+async function loadDiscoveredReposSet(): Promise<Set<string>> {
+  const p = toAbsolutePath(DISCOVERED_REPOS_PATH);
+  try {
+    const raw = await readFile(p, "utf8");
+    const parsed = JSON.parse(raw) as DiscoveredReposFile;
+    const set = new Set<string>();
+    for (const r of parsed.repos ?? []) {
+      if (r?.fullName) set.add(r.fullName);
+    }
+    return set;
+  } catch {
+    return new Set<string>();
+  }
+}
+
 async function main() {
   const mode = parseSourceMode(SOURCE_MODE);
   console.log(`📥 Indexing (${mode} mode)...\n`);
@@ -580,6 +702,37 @@ async function main() {
     if (entries.length === 0) return;
     const candidateCount = entries.filter((e) => !!extractHashedRekordDigestB64(e.entry)).length;
     console.log(`✓ Candidate hashedrekord entries: ${candidateCount}`);
+    const dsseMatches = findDsseMatches(entries);
+    if (FCP_REKOR_DSSE_PUBLIC_KEY_RAW_B64 || FCP_REKOR_DSSE_PAYLOAD_HASH_B64) {
+      console.log(`✓ DSSE matches by explicit criterion: ${dsseMatches.length}`);
+      if (dsseMatches.length > 0) {
+        console.log("  Matching log indices:", dsseMatches.map((m) => m.logIndex).join(", "));
+      }
+    } else {
+      console.log(
+        "ℹ No DSSE match criteria set. Optionally set FCP_REKOR_DSSE_PUBLIC_KEY_RAW_B64 and/or FCP_REKOR_DSSE_PAYLOAD_HASH_B64."
+      );
+    }
+    const discovered = await loadDiscoveredReposSet();
+    if (discovered.size > 0) {
+      const repoMatches = entries
+        .map((e) => {
+          const repo = extractGithubRepoFromDsseCert(e.entry);
+          if (!repo) return null;
+          if (!discovered.has(repo)) return null;
+          return { logIndex: e.logIndex, repo };
+        })
+        .filter((x): x is NonNullable<typeof x> => !!x);
+      console.log(`✓ DSSE entries signed by discovered topic repos: ${repoMatches.length}`);
+      if (repoMatches.length > 0) {
+        const preview = repoMatches.slice(0, 10).map((m) => `${m.logIndex}:${m.repo}`).join(", ");
+        console.log(`  Matches (up to 10): ${preview}`);
+      }
+    } else {
+      console.log(
+        "ℹ No discovered repos loaded. Run `pnpm demo:fide-indexer-template:discover` first."
+      );
+    }
     console.log(
       "ℹ Independent mode: no candidate files are persisted. " +
         "Attach an artifact resolver later to fetch and validate FCP content."

@@ -9,6 +9,7 @@ This template is intentionally independent of any specific attestor repo path.
 | `pnpm index` | Run indexer in default `rekor` mode (poll Rekor tiles + advance cursor) |
 | `pnpm index:rekor` | Explicit Rekor mode |
 | `pnpm index:filesystem` | Filesystem mode (verify statement-attestations + materialize statements) |
+| `pnpm index:discover` | Discover GitHub repos by topic (default: `fide-context-registry`) and save to `.state` |
 | `pnpm schema:reset` | DROP + CREATE schema (prompts for confirmation; use `--yes` to skip) |
 | `pnpm reset` | Clear `fcp_raw_identifiers` and `fcp_statements` |
 
@@ -29,6 +30,11 @@ Optional env:
 - `REKOR_TIMEOUT_MS` (default `20000`)
 
 Note: Rekor mode is fully independent and tails transparency entries only. It does not persist candidate files; it only updates cursor and logs candidate counts.
+
+Topic cross-reference behavior:
+
+- After running `index:discover`, `index:rekor` also checks DSSE entries whose verifier includes an x509 cert identity and matches discovered `OWNER/REPO`.
+- This requires keyless GitHub OIDC signing (cert-based verifier). Local self-managed key submissions (public-key verifier only) will not match repo identity.
 
 ### 2) Filesystem mode
 
@@ -59,6 +65,7 @@ Env loading order: repo root `.env` first, then `demos/fide-indexer-template/.en
 From repo root:
 
 ```bash
+pnpm demo:fide-indexer-template:discover
 pnpm demo:fide-indexer-template:rekor
 ```
 
@@ -67,3 +74,13 @@ Or for filesystem ingestion:
 ```bash
 FCP_STATEMENT_ATTESTATIONS_PATH=... FCP_STATEMENTS_PATH=... pnpm demo:fide-indexer-template:filesystem
 ```
+
+Discovery output path:
+
+- `packages/fcp/demos/fide-indexer-template/.state/github-topic-repos.json`
+
+Optional discovery env:
+
+- `FCP_REGISTRY_TOPIC` (default `fide-context-registry`)
+- `GITHUB_TOKEN` (recommended to avoid anonymous GitHub API rate limits)
+- `FCP_DISCOVER_MAX_PAGES` (default `5`)
