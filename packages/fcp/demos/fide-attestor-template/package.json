@@ -5,7 +5,8 @@
   "type": "module",
   "description": "Fide Context Protocol attestor template — writes signed JSONL to .fide/attestations/",
   "scripts": {
-    "seed": "tsx src/scripts/seed.ts"
+    "seed": "tsx src/scripts/seed.ts",
+    "rekor": "tsx src/scripts/rekor.ts"
   },
   "dependencies": {
     "@fide.work/fcp": "workspace:*",

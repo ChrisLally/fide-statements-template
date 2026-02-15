@@ -10,6 +10,7 @@
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types",
     "demo:fide-attestor-template:seed": "pnpm --filter fide-attestor-template seed",
+    "demo:fide-attestor-template:rekor": "pnpm --filter fide-attestor-template rekor",
     "demo:indexer:index": "pnpm --filter indexer index",
     "subtree:fide-attestor-template:push": "bash scripts/subtree/fide-attestor-template-push.sh",
     "subtree:fide-attestor-template:pull": "bash scripts/subtree/fide-attestor-template-pull.sh"

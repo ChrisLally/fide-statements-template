@@ -11,6 +11,7 @@ Creates statements, signs batches with Ed25519 (zero-dependency), and writes:
 | Command | Description |
 |---------|-------------|
 | `pnpm seed` | Seed test statements, sign with Ed25519, write `.fide/statements` and `.fide/statement-attestations` |
+| `pnpm rekor` | Submit latest statement-attestation JSONL artifact to Rekor v2 and write `.fide/rekor-proofs` |
 
 ## Setup
 
@@ -27,6 +28,7 @@ Env loading order: repo root `.env` first, then `demos/fide-attestor-template/.e
 
 ```bash
 pnpm --filter fide-attestor-template seed
+pnpm --filter fide-attestor-template rekor
 ```
 
 ## Signing
@@ -34,3 +36,11 @@ pnpm --filter fide-attestor-template seed
 Uses **Ed25519** (native Web Crypto API, no viem). For Ethereum/wallet flows, use EIP-712 in your own app.
 
 By default, `.fide/statements/`, `.fide/statement-attestations/`, and `.fide/rekor-proofs/` are committed (public).
+
+## GitHub Action (Keyless)
+
+Template includes a keyless Sigstore workflow:
+
+- `.github/workflows/rekor-keyless-demo.yml`
+
+It signs the latest `.fide/statement-attestations/*.jsonl` with GitHub OIDC identity, uploads to Rekor, verifies certificate identity constraints, and uploads proof artifacts.

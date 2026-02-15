@@ -1,0 +1,233 @@
+/**
+ * Submit latest statement-attestation artifact to Rekor v2.
+ *
+ * Flow:
+ * 1. Read latest .fide/statement-attestations/.../*.jsonl
+ * 2. SHA-256 digest + ECDSA P-256 signature (local witness key)
+ * 3. POST to /api/v2/log/entries (hashedRekordRequestV002)
+ * 4. Write response/proof JSON to .fide/rekor-proofs/YYYY/MM/DD/
+ */
+
+import { createHash, createSign, createPrivateKey, createPublicKey, generateKeyPairSync } from "node:crypto";
+import { readdir, readFile, mkdir, writeFile } from "node:fs/promises";
+import type { Dirent } from "node:fs";
+import { dirname, join, basename } from "node:path";
+import { fileURLToPath } from "node:url";
+import { loadDemoEnv } from "../lib/env.js";
+
+loadDemoEnv();
+
+const ATTESTOR_ROOT = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
+const FIDE_ROOT = join(ATTESTOR_ROOT, ".fide");
+
+const STATEMENT_ATTESTATIONS_PATH =
+  process.env.FCP_STATEMENT_ATTESTATIONS_PATH ??
+  process.env.FCP_ATTESTATIONS_PATH ??
+  join(FIDE_ROOT, "statement-attestations");
+
+const REKOR_PROOFS_PATH =
+  process.env.FCP_REKOR_PROOFS_PATH ?? join(FIDE_ROOT, "rekor-proofs");
+
+const REKOR_BASE_URL = (process.env.REKOR_BASE_URL ?? "https://log2025-1.rekor.sigstore.dev").replace(/\/+$/, "");
+const REKOR_ENTRIES_URL = `${REKOR_BASE_URL}/api/v2/log/entries`;
+const REKOR_TIMEOUT_MS = Number(process.env.REKOR_TIMEOUT_MS ?? "30000");
+const REKOR_KEY_DETAILS = process.env.REKOR_KEY_DETAILS ?? "PKIX_ECDSA_P256_SHA_256";
+
+interface StatementAttestationLine {
+  m: string;
+  u: string;
+  r: string;
+  s: string;
+  t: string;
+}
+
+function bytesToBase64(bytes: Uint8Array): string {
+  return Buffer.from(bytes).toString("base64");
+}
+
+function bytesToHex(bytes: Uint8Array): string {
+  return Buffer.from(bytes).toString("hex");
+}
+
+function utcDatePartition(date: Date): string {
+  const y = date.getUTCFullYear();
+  const m = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(date.getUTCDate()).padStart(2, "0");
+  return `${y}/${m}/${d}`;
+}
+
+function utcMinuteStamp(date: Date): string {
+  const y = date.getUTCFullYear();
+  const m = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(date.getUTCDate()).padStart(2, "0");
+  const hh = String(date.getUTCHours()).padStart(2, "0");
+  const mm = String(date.getUTCMinutes()).padStart(2, "0");
+  return `${y}-${m}-${d}-${hh}${mm}`;
+}
+
+async function findLatestJsonl(basePath: string): Promise<string | null> {
+  const files: string[] = [];
+
+  async function walk(dir: string): Promise<void> {
+    let entries: Dirent[];
+    try {
+      entries = (await readdir(dir, { withFileTypes: true })) as Dirent[];
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === "ENOENT") return;
+      throw err;
+    }
+
+    for (const entry of entries) {
+      const full = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        await walk(full);
+      } else if (entry.isFile() && entry.name.endsWith(".jsonl")) {
+        files.push(full);
+      }
+    }
+  }
+
+  await walk(basePath);
+  if (files.length === 0) return null;
+  files.sort();
+  return files[files.length - 1]!;
+}
+
+function parseAttestationShortFromFilename(path: string, fallbackRoot: string): string {
+  const name = basename(path, ".jsonl");
+  const idx = name.lastIndexOf("-");
+  if (idx >= 0 && idx + 1 < name.length) {
+    return name.slice(idx + 1);
+  }
+  return fallbackRoot.slice(0, 12);
+}
+
+async function main() {
+  console.log("📡 Rekor submit (v2) from latest statement-attestation\n");
+  console.log("   Rekor URL:", REKOR_ENTRIES_URL);
+
+  const latestPath = await findLatestJsonl(STATEMENT_ATTESTATIONS_PATH);
+  if (!latestPath) {
+    console.log("ℹ No statement-attestations found.");
+    console.log("  Run: pnpm --filter fide-attestor-template seed");
+    return;
+  }
+
+  const artifactBytes = await readFile(latestPath);
+  const artifactText = artifactBytes.toString("utf8").trim();
+  if (!artifactText) {
+    throw new Error(`Latest attestation file is empty: ${latestPath}`);
+  }
+
+  const firstLine = artifactText.split("\n")[0]!;
+  const attestation = JSON.parse(firstLine) as StatementAttestationLine;
+
+  const digestBytes = createHash("sha256").update(artifactBytes).digest();
+  const digestHex = bytesToHex(digestBytes);
+
+  const privatePem = process.env.REKOR_ECDSA_PRIVATE_KEY_PEM;
+  const publicPem = process.env.REKOR_ECDSA_PUBLIC_KEY_PEM;
+  const keyPair = privatePem && publicPem
+    ? {
+        privateKey: createPrivateKey(privatePem),
+        publicKey: createPublicKey(publicPem),
+        generated: false,
+      }
+    : (() => {
+        const { privateKey, publicKey } = generateKeyPairSync("ec", { namedCurve: "prime256v1" });
+        return { privateKey, publicKey, generated: true };
+      })();
+
+  const signer = createSign("sha256");
+  signer.update(artifactBytes);
+  signer.end();
+  const signatureBytes = signer.sign(keyPair.privateKey);
+  const publicKeyDer = keyPair.publicKey.export({ type: "spki", format: "der" });
+
+  const payload = {
+    hashedRekordRequestV002: {
+      digest: bytesToBase64(digestBytes),
+      signature: {
+        content: bytesToBase64(signatureBytes),
+        verifier: {
+          publicKey: {
+            rawBytes: bytesToBase64(publicKeyDer),
+          },
+          keyDetails: REKOR_KEY_DETAILS,
+        },
+      },
+    },
+  };
+
+  console.log("   Artifact:", latestPath);
+  console.log("   SHA256:", digestHex);
+  console.log("   Key:", keyPair.generated ? "generated ephemeral P-256 key" : "env-provided P-256 key");
+  console.log("   Submitting...");
+
+  const response = await fetch(REKOR_ENTRIES_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(REKOR_TIMEOUT_MS),
+  });
+
+  const bodyText = await response.text();
+  let bodyJson: unknown = null;
+  try {
+    bodyJson = JSON.parse(bodyText);
+  } catch {
+    bodyJson = { raw: bodyText };
+  }
+
+  const now = new Date();
+  const outDir = join(REKOR_PROOFS_PATH, utcDatePartition(now));
+  await mkdir(outDir, { recursive: true });
+
+  const shortId = parseAttestationShortFromFilename(latestPath, attestation.r);
+  const outFile = join(outDir, `${utcMinuteStamp(now)}-${shortId}.json`);
+  const latestFile = join(REKOR_PROOFS_PATH, "latest.json");
+
+  const proofRecord = {
+    submittedAt: now.toISOString(),
+    rekor: {
+      url: REKOR_ENTRIES_URL,
+      status: response.status,
+      ok: response.ok,
+    },
+    artifact: {
+      path: latestPath,
+      sizeBytes: artifactBytes.length,
+      sha256: digestHex,
+    },
+    attestation: {
+      root: attestation.r,
+      method: attestation.m,
+      user: attestation.u,
+      signedAt: attestation.t,
+    },
+    request: payload,
+    response: bodyJson,
+  };
+
+  await writeFile(outFile, JSON.stringify(proofRecord, null, 2) + "\n", "utf8");
+  await writeFile(latestFile, JSON.stringify(proofRecord, null, 2) + "\n", "utf8");
+
+  if (!response.ok) {
+    console.error(`❌ Rekor submit failed (${response.status})`);
+    console.error("   Saved response:", outFile);
+    process.exit(1);
+  }
+
+  console.log("✅ Rekor submit succeeded");
+  console.log("   Saved proof:", outFile);
+  console.log("   Latest proof:", latestFile);
+}
+
+main().catch((err) => {
+  console.error("❌ Rekor submit error:", err);
+  process.exit(1);
+});
+

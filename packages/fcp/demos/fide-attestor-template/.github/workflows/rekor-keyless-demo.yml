@@ -1,0 +1,80 @@
+name: Rekor Keyless Demo
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".fide/statement-attestations/**"
+      - ".github/workflows/rekor-keyless-demo.yml"
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  sign-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Resolve latest statement-attestation file
+        id: latest
+        shell: bash
+        run: |
+          set -euo pipefail
+          latest="$(find .fide/statement-attestations -type f -name '*.jsonl' | sort | tail -n 1 || true)"
+          if [ -z "${latest}" ]; then
+            echo "No .jsonl files found in .fide/statement-attestations"
+            exit 1
+          fi
+          echo "file=${latest}" >> "$GITHUB_OUTPUT"
+          echo "Latest file: ${latest}"
+
+      - name: Sign blob keylessly (uploads to Rekor)
+        id: sign
+        shell: bash
+        env:
+          ATTESTATION_FILE: ${{ steps.latest.outputs.file }}
+        run: |
+          set -euo pipefail
+          stamp="$(date -u +%Y-%m-%d-%H%M)"
+          short="$(basename "${ATTESTATION_FILE}" .jsonl | awk -F- '{print $NF}')"
+          outdir=".fide/rekor-proofs/$(date -u +%Y/%m/%d)"
+          mkdir -p "${outdir}"
+          bundle="${outdir}/${stamp}-${short}.sigstore.json"
+
+          cosign sign-blob \
+            --yes \
+            --bundle "${bundle}" \
+            "${ATTESTATION_FILE}"
+
+          cp "${bundle}" ".fide/rekor-proofs/latest.sigstore.json"
+          echo "bundle=${bundle}" >> "$GITHUB_OUTPUT"
+          echo "Bundle: ${bundle}"
+
+      - name: Verify blob and GitHub workflow identity
+        shell: bash
+        env:
+          ATTESTATION_FILE: ${{ steps.latest.outputs.file }}
+          BUNDLE_FILE: ${{ steps.sign.outputs.bundle }}
+          CERT_ID_RE: ^https://github.com/${{ github.repository }}/.github/workflows/rekor-keyless-demo.yml@refs/heads/${{ github.ref_name }}$
+        run: |
+          set -euo pipefail
+          cosign verify-blob \
+            --bundle "${BUNDLE_FILE}" \
+            --certificate-identity-regexp "${CERT_ID_RE}" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            "${ATTESTATION_FILE}"
+
+      - name: Upload Rekor proof artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: rekor-keyless-proofs
+          path: .fide/rekor-proofs/**
+
