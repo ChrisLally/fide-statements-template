@@ -1,0 +1,19 @@
+{
+  "name": "fide-attestor-template",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Fide Context Protocol attestor template — writes signed JSONL to .fide/attestations/",
+  "scripts": {
+    "seed": "tsx src/scripts/seed.ts"
+  },
+  "dependencies": {
+    "@fide.work/fcp": "workspace:*",
+    "dotenv": "^16.4.7"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.17",
+    "tsx": "^4.7.1",
+    "typescript": "^5.8.3"
+  }
+}
