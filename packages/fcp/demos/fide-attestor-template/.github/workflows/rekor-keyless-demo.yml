@@ -47,6 +47,7 @@ jobs:
         env:
           ATTESTATION_FILE: ${{ steps.latest.outputs.file }}
           FCP_PREDICATE_TYPE: https://fide.work/fcp/predicate/statement-attestation/v1
+          REKOR_URL: https://log2025-1.rekor.sigstore.dev
         run: |
           set -euo pipefail
           stamp="$(date -u +%Y-%m-%d-%H%M)"
@@ -59,6 +60,7 @@ jobs:
 
           cosign attest-blob \
             --yes \
+            --rekor-url "${REKOR_URL}" \
             --predicate predicate.json \
             --type "${FCP_PREDICATE_TYPE}" \
             --bundle "${bundle}" \
@@ -75,10 +77,12 @@ jobs:
           BUNDLE_FILE: ${{ steps.sign.outputs.bundle }}
           CERT_ID_RE: ^https://github.com/${{ github.repository }}/.github/workflows/rekor-keyless-demo.yml@refs/heads/${{ github.ref_name }}$
           FCP_PREDICATE_TYPE: https://fide.work/fcp/predicate/statement-attestation/v1
+          REKOR_URL: https://log2025-1.rekor.sigstore.dev
         run: |
           set -euo pipefail
           cosign verify-blob-attestation \
             --bundle "${BUNDLE_FILE}" \
+            --rekor-url "${REKOR_URL}" \
             --type "${FCP_PREDICATE_TYPE}" \
             --certificate-identity-regexp "${CERT_ID_RE}" \
             --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
