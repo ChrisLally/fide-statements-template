@@ -16,7 +16,8 @@
     "demo:fide-indexer-template:filesystem": "pnpm --filter fide-indexer-template index:filesystem",
     "demo:fide-indexer-template:discover": "pnpm --filter fide-indexer-template index:discover",
     "subtree:fide-attestor-template:push": "bash scripts/subtree/fide-attestor-template-push.sh",
-    "subtree:fide-attestor-template:pull": "bash scripts/subtree/fide-attestor-template-pull.sh"
+    "subtree:fide-attestor-template:pull": "bash scripts/subtree/fide-attestor-template-pull.sh",
+    "demo:fide-indexer-template:resolve": "pnpm --filter fide-indexer-template index:resolve"
   },
   "devDependencies": {
     "prettier": "^3.7.4",

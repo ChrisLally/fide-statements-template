@@ -1,0 +1,15 @@
+{
+  "updatedAt": "2026-02-15T23:12:11.427Z",
+  "rekorBaseUrl": "https://log2025-1.rekor.sigstore.dev",
+  "count": 1,
+  "matches": [
+    {
+      "logIndex": 2033347,
+      "repo": "ChrisLally/fide-attestor-template",
+      "certIdentityUri": "https://github.com/ChrisLally/fide-attestor-template/.github/workflows/rekor-keyless-demo.yml@refs/heads/main",
+      "payloadHashDigest": "sKjTggV8rxtoTHZS8nsd/NoHK2O0ovQY5aCa/A6O+1k=",
+      "checkpointTreeSizeUpperBound": 2033689,
+      "checkpointEnvelopeUpperBound": "log2025-1.rekor.sigstore.dev\n2033689\nvPk/JZDgznTbntp2i6UWz45TaNBq3NxhGpZSeCJKJwM=\n\n— log2025-1.rekor.sigstore.dev zxGZFeY9vS6g7LzQfHjfmaXKrYHWyhzbe65zLaXOcrMJcwQytxc2Ftw3MkVSHVQyA7Ll2G46WFDLAyArRmZ3ykEftA0=\n"
+    }
+  ]
+}

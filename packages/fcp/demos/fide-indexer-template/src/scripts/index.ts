@@ -50,6 +50,9 @@ const REKOR_BOOTSTRAP_LOOKBACK_ENTRIES = 10000;
 const DISCOVERED_REPOS_PATH =
   process.env.FCP_DISCOVER_OUTPUT_PATH ??
   "packages/fcp/demos/fide-indexer-template/.state/github-topic-repos.json";
+const REKOR_REPO_MATCHES_PATH =
+  process.env.FCP_REKOR_REPO_MATCHES_PATH ??
+  "packages/fcp/demos/fide-indexer-template/.state/rekor-repo-matches.json";
 const FCP_REKOR_DSSE_PUBLIC_KEY_RAW_B64 =
   process.env.FCP_REKOR_DSSE_PUBLIC_KEY_RAW_B64 ?? "";
 const FCP_REKOR_DSSE_PAYLOAD_HASH_B64 =
@@ -87,10 +90,65 @@ interface RekorPolledEntry {
   entry: unknown;
 }
 
+interface RekorPollResult {
+  entries: RekorPolledEntry[];
+  checkpointEnvelope: string;
+  checkpointTreeSize: number;
+}
+
 interface DiscoveredReposFile {
   repos?: Array<{
     fullName?: string;
   }>;
+}
+
+interface RepoMatchRecord {
+  logIndex: number;
+  repo: string;
+  certIdentityUri: string | null;
+  payloadHashDigest: string | null;
+  checkpointTreeSizeUpperBound: number;
+  checkpointEnvelopeUpperBound: string;
+}
+
+interface RepoMatchesFile {
+  updatedAt: string;
+  rekorBaseUrl: string;
+  count: number;
+  matches: RepoMatchRecord[];
+}
+
+function normalizeRepoMatchRecord(
+  record: Record<string, unknown>,
+  fallbackCheckpointTreeSize: number,
+  fallbackCheckpointEnvelope: string
+): RepoMatchRecord | null {
+  const logIndex = Number(record.logIndex);
+  const repo = typeof record.repo === "string" ? record.repo : null;
+  if (!Number.isFinite(logIndex) || !repo) return null;
+  const certIdentityUri =
+    typeof record.certIdentityUri === "string" ? record.certIdentityUri : null;
+  const payloadHashDigest =
+    typeof record.payloadHashDigest === "string" ? record.payloadHashDigest : null;
+  const checkpointTreeSizeUpperBound =
+    typeof record.checkpointTreeSizeUpperBound === "number" &&
+    Number.isFinite(record.checkpointTreeSizeUpperBound) &&
+    record.checkpointTreeSizeUpperBound > 0
+      ? record.checkpointTreeSizeUpperBound
+      : fallbackCheckpointTreeSize;
+  const checkpointEnvelopeUpperBound =
+    typeof record.checkpointEnvelopeUpperBound === "string" &&
+    record.checkpointEnvelopeUpperBound.length > 0
+      ? record.checkpointEnvelopeUpperBound
+      : fallbackCheckpointEnvelope;
+  return {
+    logIndex,
+    repo,
+    certIdentityUri,
+    payloadHashDigest,
+    checkpointTreeSizeUpperBound,
+    checkpointEnvelopeUpperBound,
+  };
 }
 
 function parseSourceMode(value: string): SourceMode {
@@ -202,7 +260,7 @@ async function saveRekorCursor(cursorPath: string, lastProcessedLogIndex: number
   await writeFile(cursorPath, JSON.stringify(payload, null, 2) + "\n", "utf8");
 }
 
-async function pollRekorEntries(): Promise<RekorPolledEntry[]> {
+async function pollRekorEntries(): Promise<RekorPollResult> {
   const checkpointRes = await fetchWithTimeout(REKOR_CHECKPOINT_URL);
   if (!checkpointRes.ok) {
     throw new Error(`Failed to fetch checkpoint (${checkpointRes.status})`);
@@ -227,7 +285,7 @@ async function pollRekorEntries(): Promise<RekorPolledEntry[]> {
   const endIndex = treeSize - 1;
   if (endIndex < startIndex) {
     console.log("ℹ Rekor poll: no new entries.");
-    return [];
+    return { entries: [], checkpointEnvelope: checkpointText, checkpointTreeSize: treeSize };
   }
 
   const entries: RekorPolledEntry[] = [];
@@ -280,7 +338,7 @@ async function pollRekorEntries(): Promise<RekorPolledEntry[]> {
   console.log(`✓ Rekor poll: ${entries.length} new entries (${startIndex}..${endIndex})`);
   console.log(`✓ Cursor updated: ${cursorPath}`);
 
-  return entries;
+  return { entries, checkpointEnvelope: checkpointText, checkpointTreeSize: treeSize };
 }
 
 /** Import Ed25519 public key from hex (SPKI format from exportEd25519Keys, or raw 32-byte) */
@@ -563,18 +621,6 @@ async function verifyAndMaterializeFilesystem(hydrated: HydratedAttestation[]): 
   }
 }
 
-function extractKind(entry: unknown): string | null {
-  if (!entry || typeof entry !== "object") return null;
-  const maybeKind = (entry as Record<string, unknown>).kind;
-  return typeof maybeKind === "string" ? maybeKind : null;
-}
-
-function extractApiVersion(entry: unknown): string | null {
-  if (!entry || typeof entry !== "object") return null;
-  const maybe = (entry as Record<string, unknown>).apiVersion;
-  return typeof maybe === "string" ? maybe : null;
-}
-
 function extractHashedRekordDigestB64(entry: unknown): string | null {
   if (!entry || typeof entry !== "object") return null;
   const obj = entry as Record<string, unknown>;
@@ -693,12 +739,83 @@ async function loadDiscoveredReposSet(): Promise<Set<string>> {
   }
 }
 
+function extractDssePayloadHashDigest(entry: unknown): string | null {
+  const obj = entry as Record<string, unknown> | null;
+  if (!obj || typeof obj !== "object") return null;
+  if (obj.kind !== "dsse") return null;
+  const spec = obj.spec as Record<string, unknown> | undefined;
+  const dsse = spec?.dsseV002 as Record<string, unknown> | undefined;
+  const payloadHash = dsse?.payloadHash as Record<string, unknown> | undefined;
+  const digest = payloadHash?.digest;
+  return typeof digest === "string" ? digest : null;
+}
+
+function extractFirstGithubIdentityUriFromDsseCert(entry: unknown): string | null {
+  const certRawB64 = extractDsseVerifierCertRawB64(entry);
+  if (!certRawB64) return null;
+  try {
+    const certDer = Buffer.from(certRawB64, "base64");
+    const cert = new X509Certificate(certDer);
+    const san = cert.subjectAltName ?? "";
+    const parts = san
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    for (const p of parts) {
+      if (!p.startsWith("URI:")) continue;
+      const uri = p.slice(4);
+      if (uri.startsWith("https://github.com/")) return uri;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+async function loadRepoMatches(pathLike: string): Promise<RepoMatchesFile> {
+  const abs = toAbsolutePath(pathLike);
+  try {
+    const raw = await readFile(abs, "utf8");
+    const parsed = JSON.parse(raw) as RepoMatchesFile;
+    if (Array.isArray(parsed.matches)) {
+      return {
+        updatedAt: parsed.updatedAt ?? new Date(0).toISOString(),
+        rekorBaseUrl: parsed.rekorBaseUrl ?? REKOR_BASE_URL,
+        count: parsed.count ?? parsed.matches.length,
+        matches: parsed.matches,
+      };
+    }
+  } catch {
+    // fall through
+  }
+  return {
+    updatedAt: new Date(0).toISOString(),
+    rekorBaseUrl: REKOR_BASE_URL,
+    count: 0,
+    matches: [],
+  };
+}
+
+async function saveRepoMatches(pathLike: string, matches: RepoMatchRecord[]): Promise<string> {
+  const abs = toAbsolutePath(pathLike);
+  await mkdir(dirname(abs), { recursive: true });
+  const payload: RepoMatchesFile = {
+    updatedAt: new Date().toISOString(),
+    rekorBaseUrl: REKOR_BASE_URL,
+    count: matches.length,
+    matches,
+  };
+  await writeFile(abs, JSON.stringify(payload, null, 2) + "\n", "utf8");
+  return abs;
+}
+
 async function main() {
   const mode = parseSourceMode(SOURCE_MODE);
   console.log(`📥 Indexing (${mode} mode)...\n`);
 
   if (mode === "rekor") {
-    const entries = await pollRekorEntries();
+    const poll = await pollRekorEntries();
+    const entries = poll.entries;
     if (entries.length === 0) return;
     const candidateCount = entries.filter((e) => !!extractHashedRekordDigestB64(e.entry)).length;
     console.log(`✓ Candidate hashedrekord entries: ${candidateCount}`);
@@ -728,14 +845,50 @@ async function main() {
         const preview = repoMatches.slice(0, 10).map((m) => `${m.logIndex}:${m.repo}`).join(", ");
         console.log(`  Matches (up to 10): ${preview}`);
       }
+
+      const existing = await loadRepoMatches(REKOR_REPO_MATCHES_PATH);
+      const byIndex = new Map<number, RepoMatchRecord>(
+        existing.matches.map((m) => [m.logIndex, m])
+      );
+      for (const m of repoMatches) {
+        const found = entries.find((e) => e.logIndex === m.logIndex);
+        if (!found) continue;
+        const existingAtIndex = byIndex.get(m.logIndex);
+        const currentBound = poll.checkpointTreeSize;
+        const previousBound = existingAtIndex?.checkpointTreeSizeUpperBound;
+        const keepPrevious =
+          typeof previousBound === "number" && previousBound > 0 && previousBound < currentBound;
+        byIndex.set(m.logIndex, {
+          logIndex: m.logIndex,
+          repo: m.repo,
+          certIdentityUri: extractFirstGithubIdentityUriFromDsseCert(found.entry),
+          payloadHashDigest: extractDssePayloadHashDigest(found.entry),
+          checkpointTreeSizeUpperBound: keepPrevious ? previousBound : currentBound,
+          checkpointEnvelopeUpperBound: keepPrevious
+            ? (existingAtIndex?.checkpointEnvelopeUpperBound ?? poll.checkpointEnvelope)
+            : poll.checkpointEnvelope,
+        });
+      }
+      const merged = Array.from(byIndex.values())
+        .map((m) =>
+          normalizeRepoMatchRecord(
+            m as unknown as Record<string, unknown>,
+            poll.checkpointTreeSize,
+            poll.checkpointEnvelope
+          )
+        )
+        .filter((m): m is RepoMatchRecord => !!m)
+        .sort((a, b) => a.logIndex - b.logIndex);
+      const outPath = await saveRepoMatches(REKOR_REPO_MATCHES_PATH, merged);
+      console.log(`✓ Saved repo matches: ${outPath} (count=${merged.length})`);
     } else {
       console.log(
         "ℹ No discovered repos loaded. Run `pnpm demo:fide-indexer-template:discover` first."
       );
     }
     console.log(
-      "ℹ Independent mode: no candidate files are persisted. " +
-        "Attach an artifact resolver later to fetch and validate FCP content."
+      "ℹ Rekor mode persists minimal repo matches only. " +
+        "Use resolver flow to fetch full entry details on demand."
     );
     return;
   }

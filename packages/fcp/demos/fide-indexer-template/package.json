@@ -10,7 +10,8 @@
     "index:filesystem": "FCP_INDEXER_SOURCE_MODE=filesystem tsx src/scripts/index.ts",
     "index:discover": "tsx src/scripts/discover.ts",
     "schema:reset": "tsx src/scripts/migrate.ts",
-    "reset": "tsx src/scripts/reset.ts"
+    "reset": "tsx src/scripts/reset.ts",
+    "index:resolve": "tsx src/scripts/resolve-rekor-entry.ts"
   },
   "dependencies": {
     "@fide.work/fcp": "workspace:*",
