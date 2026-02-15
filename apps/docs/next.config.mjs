@@ -1,6 +1,9 @@
 import { createMDX } from 'fumadocs-mdx/next';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const withMDX = createMDX();
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 /** @type {import('next').NextConfig} */
 const config = {
@@ -12,6 +15,9 @@ const config = {
   // This bypasses the /_next/image API which has issues with basePath when proxied
   images: {
     unoptimized: true,
+  },
+  turbopack: {
+    root: repoRoot,
   },
   async rewrites() {
     return [

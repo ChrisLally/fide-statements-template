@@ -170,7 +170,7 @@ function extractTypeNamesFromTypeString(typeStr: string): string[] {
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const DOCS_ROOT = resolve(SCRIPT_DIR, '..', '..', '..', '..');
 const WORKSPACE_ROOT = resolve(DOCS_ROOT, '..', '..');
-const SDK_ENTRY = resolve(WORKSPACE_ROOT, 'packages/fcp/src/index.ts');
+const SDK_ENTRY = resolve(WORKSPACE_ROOT, 'packages/fcp/packages/fcp-js/src/index.ts');
 const OUTPUT_DIR = resolve(DOCS_ROOT, 'content/fcp/sdks/js');
 
 // ============================================================================
@@ -320,14 +320,14 @@ function extractPropertiesFromType(
 
 function buildExportDetailsByName(): Map<string, ExportDetails> {
   const details = new Map<string, ExportDetails>();
-  const tsconfigPath = resolve(WORKSPACE_ROOT, 'packages/fcp/tsconfig.json');
+  const tsconfigPath = resolve(WORKSPACE_ROOT, 'packages/fcp/packages/fcp-js/tsconfig.json');
   const configRead = ts.readConfigFile(tsconfigPath, ts.sys.readFile);
   if (configRead.error) return details;
 
   const parsed = ts.parseJsonConfigFileContent(
     configRead.config,
     ts.sys,
-    resolve(WORKSPACE_ROOT, 'packages/fcp')
+    resolve(WORKSPACE_ROOT, 'packages/fcp/packages/fcp-js')
   );
   const program = ts.createProgram({
     rootNames: parsed.fileNames,
