@@ -13,9 +13,14 @@ permissions:
   contents: read
   id-token: write
 
+concurrency:
+  group: rekor-keyless-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   sign-and-verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -77,4 +82,4 @@ jobs:
         with:
           name: rekor-keyless-proofs
           path: .fide/rekor-proofs/**
-
+          retention-days: 7

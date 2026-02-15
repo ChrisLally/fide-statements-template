@@ -11,7 +11,9 @@
     "check-types": "turbo run check-types",
     "demo:fide-attestor-template:seed": "pnpm --filter fide-attestor-template seed",
     "demo:fide-attestor-template:rekor": "pnpm --filter fide-attestor-template rekor",
-    "demo:indexer:index": "pnpm --filter indexer index",
+    "demo:fide-indexer-template:index": "pnpm --filter fide-indexer-template index",
+    "demo:fide-indexer-template:rekor": "pnpm --filter fide-indexer-template index:rekor",
+    "demo:fide-indexer-template:filesystem": "pnpm --filter fide-indexer-template index:filesystem",
     "subtree:fide-attestor-template:push": "bash scripts/subtree/fide-attestor-template-push.sh",
     "subtree:fide-attestor-template:pull": "bash scripts/subtree/fide-attestor-template-pull.sh"
   },

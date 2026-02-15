@@ -1,11 +1,13 @@
 {
-  "name": "indexer",
+  "name": "fide-indexer-template",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "description": "FCP indexer — pull from registry → verify → materialize to Supabase",
   "scripts": {
     "index": "tsx src/scripts/index.ts",
+    "index:rekor": "FCP_INDEXER_SOURCE_MODE=rekor tsx src/scripts/index.ts",
+    "index:filesystem": "FCP_INDEXER_SOURCE_MODE=filesystem tsx src/scripts/index.ts",
     "schema:reset": "tsx src/scripts/migrate.ts",
     "reset": "tsx src/scripts/reset.ts"
   },
