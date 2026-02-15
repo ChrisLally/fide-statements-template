@@ -1,0 +1,227 @@
+---
+title: Identifiers
+description: Understanding universal entity identification in the Fide Context Protocol.
+---
+
+import { SmartDocsCard } from '@/components/mdx/smart-docs-card';
+import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+import { Step, Steps } from 'fumadocs-ui/components/steps';
+
+To build a **distributed Fide Context Graph**, we must agree on how to identify distinct entities across systems. A **Fide ID** is a deterministic pointer to any entity.
+
+## Calculating Fide IDs [#calculate]
+
+A Fide ID is a **fully qualified DID (Decentralized Identifier)** that acts as a deterministic pointer. It is made of a constant **Prefix** and **3 Parts**:
+
+<Callout type="info" title="SDK Implementation">
+The SDK provides `calculateFideId()` and `calculateStatementFideId()` functions. For practical usage in your application, see **[Building Statements Guide](/docs/guides/building-statements)** for implementation examples.
+</Callout>
+
+```text
+[Prefix: did:fide:0x][Part 1: Entity Type][Part 2: Identifier Source Type][Part 3: Identifier Fingerprint]
+```
+
+*   [**Prefix**](#prefix): The constant `did:fide:0x` header.
+*   [**Part 1 (FCP Entity Type)**](#type): What is it? (e.g. `1` = [Person](/docs/entities#person))
+*   [**Part 2 (Identifier Source)**](#identifier-type): How is it identified? (e.g. `5` = platform URL)
+*   [**Part 3 (Identifier Fingerprint)**](#fingerprint): Unique hash (SHA-256)
+
+
+<Accordions>
+<Accordion title="calculateFideId Technical Details">
+
+The `calculateFideId` function produces a 20-byte Fide ID (40 hex chars).
+
+<Tabs groupId="language" items={['TypeScript', 'Python']}>
+<Tab value="TypeScript">
+
+```typescript
+// One mapping for both Part 1 (entity types) and Part 2 (identifier sources)
+const ID_MAP = {
+  // Protocol Types
+  Statement: "0",
+  Attestation: "a",
+  EvaluationMethod: "e",
+
+  // Domain Types
+  Person: "1",
+  Organization: "2",
+  Place: "3",
+  Event: "4",
+  Product: "5",
+  CreativeWork: "6",
+  AutonomousAgent: "7",
+  CryptographicAccount: "8"
+} as const;
+
+export async function calculateFideId(
+  type: string,
+  identifierType: string,
+  rawIdentifier: string
+): Promise<`did:fide:0x${string}`> {
+  // Encode the raw identifier as UTF-8 inside calculateFideId.
+  const bytes = new TextEncoder().encode(rawIdentifier);
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  const hashHex = Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
+
+  const typeChar = ID_MAP[type as keyof typeof ID_MAP];
+  const sourceTypeChar = ID_MAP[identifierType as keyof typeof ID_MAP];
+  const fingerprint = hashHex.slice(-38); // Last 19 bytes (38 hex chars)
+
+  return `did:fide:0x${typeChar}${sourceTypeChar}${fingerprint}` as `did:fide:0x${string}`;
+}
+```
+
+</Tab>
+<Tab value="Python">
+
+```python
+import hashlib
+
+# One mapping for both Part 1 (entity types) and Part 2 (identifier sources)
+ID_MAP = {
+    # Protocol Types
+    "Statement": "0",
+    "Attestation": "a",
+    "EvaluationMethod": "e",
+
+    # Domain Types
+    "Person": "1",
+    "Organization": "2",
+    "Place": "3",
+    "Event": "4",
+    "Product": "5",
+    "CreativeWork": "6",
+    "AutonomousAgent": "7",
+    "CryptographicAccount": "8",
+}
+
+def calculate_fide_id(entity_type: str, identifier_type: str, raw_identifier: str) -> str:
+    if not isinstance(raw_identifier, str):
+        raise TypeError("raw_identifier must be a string")
+
+    type_char = ID_MAP[entity_type]
+    source_type_char = ID_MAP[identifier_type]
+    hash_hex = hashlib.sha256(raw_identifier.encode("utf-8")).hexdigest()
+    fingerprint = hash_hex[-38:]  # Last 38 hex chars (19 bytes)
+    return f"did:fide:0x{type_char}{source_type_char}{fingerprint}"
+```
+
+</Tab>
+</Tabs>
+
+<Callout type="info" title="Protocol Invariants">
+1. `rawIdentifier` must be the original native string in any runtime (`string` in JS/TS, `str` in Python, `string` in Go, `String` in Java/Kotlin, `String` in Rust); do not pre-encode or Base64-wrap it.
+2. UTF-8 encoding must happen inside `calculateFideId`.
+3. Hash algorithm is `SHA-256`.
+4. Fingerprint is the last 38 hex chars (19 bytes) of the hash.
+5. Final shape is `did:fide:0x{type}{source}{fingerprint}`.
+6. The same `(type, identifierType, rawIdentifier)` must produce the same Fide ID across runtimes.
+</Callout>
+
+<Callout type="info" title="Runtime Behavior: Async vs Sync">
+TypeScript implementations using `crypto.subtle` are asynchronous, so call sites should `await calculateFideId(...)`.
+In the reference implementation, `lib/fcp/fide-id.ts` follows this async behavior.
+Python implementations using `hashlib` are synchronous and can call `calculate_fide_id(...)` inline.
+</Callout>
+
+</Accordion>
+</Accordions>
+
+## Prefix [#prefix]
+
+Every Fide ID begins with the constant prefix: **`did:fide:0x`**
+
+This namespace guarantees that the identifier is a valid [W3C DID](https://www.w3.org/TR/did-core/) and enforces **Hexadecimal** encoding for the identifier string.
+
+*   **Format**: `did:fide:0x...`
+*   **Example**: `did:fide:0x15...`
+
+<Callout type="warning" title="The Golden Rule: Unique Representation">
+Your [`rawIdentifier`](#fingerprint) string must be a **unique anchor** for the entity itself, not just a reference to it.
+
+*   ✅ **Good**: `https://x.com/alice` (Product ID, full URL) → Uniquely identifies **Alice** ([Person](/docs/entities#person)).
+*   ❌ **Bad**: `https://nytimes.com/interview-with-alice` (CreativeWork ID) → Identifies the **Article**, not Alice.
+</Callout>
+
+## Part 1: FCP Entity Type [#type]
+
+The first character of the [Fide ID](#calculate) defines **WHAT** the entity is.
+
+| Char | Entity Type (Link) |
+|------|-------------|
+| `0` | [**Statement**](/docs/entities#statement) |
+| `1` | [**Person**](/docs/entities#person) |
+| `2` | [**Organization**](/docs/entities#organization) |
+| `3` | [**Place**](/docs/entities#place) |
+| `4` | [**Event**](/docs/entities#event) |
+| `5` | [**Product**](/docs/entities#product) |
+| `6` | [**CreativeWork**](/docs/entities#creative-work) |
+| `7` | [**AutonomousAgent**](/docs/entities#autonomous-agent) |
+| `8` | [**CryptographicAccount**](/docs/entities#cryptographic-account) |
+| `a` | [**Attestation**](/docs/entities#attestation) |
+| `e` | [**EvaluationMethod**](/docs/entities#evaluation-method) |
+
+<Callout type="info">
+See **[Entity Definitions](/docs/entities)** for the full meaning, standard alignment, and ID patterns for each type.
+</Callout>
+
+## Part 2: Identifier Source Type [#identifier-type]
+
+The second character of the [Fide ID](#calculate) defines the **entity type of the identifier used as the `rawIdentifier` input**.
+
+In other words: it tells you what kind of thing the identifier *came from* (a [Statement](/docs/entities#statement) `rawIdentifier`, a [Product](/docs/entities#product)/platform handle, a [CreativeWork](/docs/entities#creative-work) string, or a [CryptographicAccount](/docs/entities#cryptographic-account) address). Non-statement entities in stored statements use concrete sources (e.g. Product, Organization); see [Storage rules](#storage-rules). See [Input Formatting Examples](#examples) for common patterns.
+
+## Part 3: Identifier Fingerprint [#fingerprint]
+
+The **Identifier Fingerprint** is the last 38 characters of the [Fide ID](#calculate)—the last 19 bytes of `SHA-256(rawIdentifier)`—derived in [`calculateFideId`](#calculate) to ensure global uniqueness.
+
+### Input Formatting Examples [#examples]
+
+Common `rawIdentifier` strings used as input to [`calculateFideId`](#calculate). For predicates, the SDK's `expandPredicateIdentifier` expands shorthand (`schema:name`, `owl:sameAs`) to full URLs before hashing.
+
+| `rawIdentifier` | Entity Type | Identifier Source Type | Fide ID Prefix |
+|---|---|---|---|
+| `https://x.com/alice` | [Person](/docs/entities#person) | [Product](/docs/entities#product) (platform URL) | `did:fide:0x15...` |
+| `https://github.com/fide-project` | [Organization](/docs/entities#organization) | [Product](/docs/entities#product) (URL) | `did:fide:0x25...` |
+| `https://www.acme.com` | [Organization](/docs/entities#organization) | [Product](/docs/entities#product) (domain) | `did:fide:0x25...` |
+| `0x1234...abcd` | [CryptographicAccount](/docs/entities#cryptographic-account) | [CryptographicAccount](/docs/entities#cryptographic-account) (address) | `did:fide:0x88...` |
+| `geo:37.77,-122.41` | [Place](/docs/entities#place) | [Product](/docs/entities#product) (geo URI) | `did:fide:0x35...` |
+| `schema:worksFor` or `https://schema.org/worksFor` | [CreativeWork](/docs/entities#creative-work) | [Product](/docs/entities#product) (predicate) | `did:fide:0x65...` |
+| `https://github.com/fide-work/evaluation-methods/alias-resolution-trust/v1` | [EvaluationMethod](/docs/entities#evaluation-method) | [Product](/docs/entities#product) (URL) | `did:fide:0xe5...` |
+| `normalizedStatementJson({s,p,o})` | [Statement](/docs/entities#statement) | [Statement](/docs/entities#statement) (content-addressed) | `did:fide:0x00...` |
+| `normalizedAttestationJson({m,u,r,s})` | [Attestation](/docs/entities#attestation) | [Attestation](/docs/entities#attestation) (content-addressed) | `did:fide:0xaa...` |
+
+---
+
+## Storage Rules [#storage-rules]
+
+Stored statements must use **concrete source identifiers**. 
+
+<Callout type="warning" title="Avoid Double-Hashing">
+**Do not calculate a Fide ID from another Fide ID.**
+
+*   ❌ **Bad**: Calculating `did:fide:0x10...` (Person + Statement) where the `rawIdentifier` is the genesis statement hash.
+*   ✅ **Good**: Calculating `did:fide:0x15...` (Person + Product) where the `rawIdentifier` is the actual social URL.
+</Callout>
+
+| Source Type | Example ID | Usage |
+|-------------|------------|-------|
+| **Statement (`0`)** | `0x00...` | ✅ Allowed (References the statement itself) |
+| **Attestation (`a`)** | `0xaa...` | ✅ Allowed (References the attestation) |
+| **Concrete Sources** | `0x15...`, `0x25...`, `0x66...` | ✅ **Required** for all Domain Entities (Person, Org, Work, etc) |
+| **Genesis Derived** | `0x10...`, `0x20...`, `0xe0...` | ❌ **Disallowed** in storage (Use concrete source instead) |
+
+**Why?**
+The genesis ID (`0x10...`) is purely *derived* from the first statement about an entity. Storing it as the primary ID creates a circular dependency. Always store the **source** (Product ID, etc.) and let indexers resolve it.
+
+---
+
+## Resolution to Primary Fide ID [#resolution]
+
+Resolving multiple identifiers to a single primary (e.g. merging aliases) happens in the indexer's materialized view, not at the identifier level. See [**Materialized View: Statements with Resolved Identifiers**](/docs/indexing/#resolved-statements).
+
+---

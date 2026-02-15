@@ -1,0 +1,11 @@
+{
+  "title": "Work Management",
+  "defaultOpen": false,
+  "pages": [
+    "tasks",
+    "projects",
+    "goals",
+    "initiatives",
+    "milestones"
+  ]
+}

@@ -1,0 +1,68 @@
+---
+title: MCP Servers
+description: Connect agents to Model Context Protocol servers for extended capabilities
+---
+
+import { Cards } from 'fumadocs-ui/components/card';
+import { SmartDocsCard } from '@/components/mdx/smart-docs-card';
+
+MCP (Model Context Protocol) Servers extend agent capabilities with custom tools and resources.
+
+## Looking for the Fide MCP Server?
+
+If you want to connect Claude Desktop or Cursor **TO** Fide:
+
+<Cards>
+  <SmartDocsCard href="/docs/developers/fide-mcp-server" />
+</Cards>
+
+## What are MCP Servers?
+
+MCP is an open protocol that allows AI agents to connect to external servers that provide:
+- **Tools** - Custom functions agents can call
+- **Resources** - Data and context agents can access
+- **Prompts** - Pre-built prompt templates
+
+## Why MCP?
+
+MCP standardizes how agents interact with external systems:
+- **Interoperability** - Works across different AI providers
+- **Security** - Controlled access to capabilities
+- **Extensibility** - Add new capabilities without code changes
+
+## Connecting MCP Servers
+
+### Supported Transports
+
+- **Stdio** - Local process communication
+- **HTTP+SSE** - Remote server over HTTP
+
+### Configuration
+
+```json
+{
+  "command": "npx",
+  "args": ["-y", "@modelcontextprotocol/server-filesystem"],
+  "env": {
+    "ALLOWED_DIRECTORIES": "/path/to/data"
+  }
+}
+```
+
+## Available MCP Servers
+
+### Official Servers
+- **Filesystem** - File read/write access
+- **GitHub** - Repository operations
+- **Postgres** - Database queries
+- **Brave Search** - Web search
+
+### Community Servers
+The MCP ecosystem is growing with community-built servers for various services.
+
+## Security Considerations
+
+- **Allow-listing** - Only approved servers can connect
+- **Sandboxing** - Servers run in isolated environments
+- **Permission Scoping** - Limit what tools are exposed
+- **Audit Logging** - Track all MCP calls

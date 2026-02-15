@@ -1,0 +1,20 @@
+---
+title: Decision Tracking
+description: Visualizing the 'Why' behind agent actions.
+---
+
+In most tools, AI is a "Black Box." You ask for something, and it spits out an answer. If the answer is wrong, you have no idea why. Fide is a "Glass Box."
+
+## The "Trace" View
+Every meaningful action taken by a **Fide Agent** is recorded as a [**Decision Trace**](/docs/fcp/capture). In the workspace, you can expand any completed task to see a timeline of the agent's thought process.
+
+### What you can see:
+1.  **The Inputs:** "What documents did the agent read?" (Did it see the old spec or the new one?)
+2.  **The Thoughts:** "What was its reasoning?" (e.g., *'I see a conflict between file A and B, I will prioritize A because it is newer.'*)
+3.  **The Tools:** "What tools did it use?" (Did it actually run the code, or just guess the output?)
+4.  **The Confidence:** "How sure was it?" (Self-rated confidence score: 95%).
+
+## Validating Intelligence
+This transparency allows you to **Trust but Verify**.
+- **Audit:** If an agent creates a bug, you can pinpoint the exact step where its logic failed and correct it.
+- **Vote:** You can "Thumbs Up/Down" specific logic steps to train the system, reinforcing good behavior in the **Context Graph**.

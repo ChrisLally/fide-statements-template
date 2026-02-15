@@ -1,0 +1,64 @@
+---
+title: "Statement Evaluation"
+description: Evaluation methods for assessing the factual accuracy and consensus of statements in the Fide Context Graph.
+---
+
+## Fide-StatementAccuracy-v1
+
+Determine factual validity based on evidence.
+
+Is this specific statement factually true? This method is strictly for **Objective Facts** (e.g., "2 + 2 = 4", "Transaction 0x123 occurred").
+
+#### Evaluation
+
+| Statement Part | Raw Identifier | Fide ID |
+|----------------|----------------|---------|
+| Subject | The Statement being evaluated | `did:fide:0x60` |
+| Predicate | Fide-StatementAccuracy-v1 EvaluationMethod (e.g., GitHub spec link) | `did:fide:0xe5` |
+| Object | Verdict value: `-1`, `0`, or `1` | `did:fide:0x66` |
+
+#### Evaluation Process
+
+1. **Input:** Subject Statement + linked evidence statements (e.g., `schema:citation` references)
+2. **Retrieval:** Search external ground truth (Wikidata, Corporate DB) for the Subject
+3. **Cross-Reference:** Compare the Statement assertion against evidence
+4. **Verdict Logic:**
+   - **True (`1`)**: Supported by >1 trusted source or cryptographic proof
+   - **False (`-1`)**: Contradicted by >1 trusted source
+   - **Unverified (`0`)**: Insufficient data
+
+<Callout type="info">
+**Audit Trail:** Link your verdict to the [Action Entity](/docs/schema/actions) that produced it using `prov:wasGeneratedBy`. This allows users to inspect the reasoning trace.
+</Callout>
+
+---
+
+## Fide-BridgingConsensus-v1
+
+Measure agreement across diverse groups (Anti-Mob Rule).
+
+Does this statement have broad consensus? This algorithm rewards agreement from opposing groups (Community Notes style) to reduce sybil-driven outcomes.
+
+#### Evaluation
+
+| Statement Part | Raw Identifier | Fide ID |
+|----------------|----------------|---------|
+| Subject | The Statement being evaluated | `did:fide:0x60` |
+| Predicate | Fide-BridgingConsensus-v1 EvaluationMethod (e.g., GitHub spec link) | `did:fide:0xe5` |
+| Object | Consensus score: `0` to `100` | `did:fide:0x66` |
+
+#### Evaluation Process
+
+1. **Input:** Subject Statement + Set of Verdicts
+2. **Cluster:** Group voting Agents by historical voting similarity (e.g., matrix-factorization style clustering)
+3. **Bridge:** Identify statements that receive positive verdicts from **opposing clusters**
+4. **Score:** Higher scores go to statements that bridge the divide; lower scores go to statements only supported by one cluster
+
+#### Output Scale
+
+| Score Range | Meaning |
+|-------------|---------|
+| `80-100` | Strong cross-group consensus |
+| `50-79` | Moderate agreement across some groups |
+| `20-49` | Limited consensus, mostly single-group support |
+| `0-19` | No bridging consensus detected |

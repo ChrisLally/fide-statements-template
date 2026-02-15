@@ -1,0 +1,56 @@
+---
+title: Fide Gateway Introduction
+description: Route requests, apply access rules, and build the right view for each agent.
+icon: Code
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+## What Fide Gateway Is
+
+**Fide Gateway is the intelligent router for agent work.**
+
+It sits in front of your models and tools to route requests, apply access rules, and include the right context.
+
+---
+
+## Gateway and Views
+
+Gateway does two jobs:
+
+1. **Request Control** - Sign-in checks, policy checks, and routing.
+
+2. **View Composition** - Build a **Unified View** by combining the **Global Graph** and your **Workspace Graph** for each agent role.
+
+<Callout type="info" title="Views are access-aware">
+  You can configure different views per agent. For example, marketing agents can use public context only, while legal agents can access the full Workspace Graph.
+</Callout>
+
+---
+
+## What Gateway Does
+
+1. **Smart Routing** - Send routine tasks to low-cost models and escalate complex work to reasoning models.
+
+2. **Context Injection** - Add relevant graph context before the model runs.
+
+3. **Access Enforcement** - Apply identity, scope, and policy checks on every request.
+
+4. **Trace Capture** - Record what happened so teams can review decisions later.
+
+---
+
+## Why It Matters
+
+- Better output quality from better context
+- Lower model spend via routing policy
+- Stronger trust with audit and traceability
+- Safer autonomy through bounded views
+
+---
+
+## Start Here
+
+- **Implement Gateway in production** -> [Guides](/docs/gateway/guides)
+- **Integrate with the Gateway API** -> [API Reference](/docs/gateway/api/v1)
+- **Learn the graph layer behind views** -> [Fide Graph](/docs/graph)

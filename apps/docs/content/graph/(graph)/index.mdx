@@ -1,0 +1,53 @@
+---
+title: Fide Graph Introduction
+description: One graph engine with a global layer and a private workspace layer.
+icon: Code
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+## What Fide Graph Is
+
+**Fide Graph is the memory engine for human-AI teams.**
+
+It gives agents shared memory across your tools, with clear history and reliable context they can use immediately.
+
+---
+
+## One Engine, Two Layers
+
+Fide Graph combines two context layers:
+
+1. **Global Graph** - Shared public context (open facts, software ecosystems, verified public identities).
+
+2. **Workspace Graph** - Your private operational memory (teams, projects, internal decisions, and proprietary context).
+
+<Callout type="info" title="The result is a Unified View">
+  Agents can reason across both layers at once through Gateway, which builds the right view for each request.
+</Callout>
+
+---
+
+## Why This Model Wins
+
+- **Faster onboarding** - Agents start with useful context from the Global Graph.
+- **Stronger decisions** - Private workspace knowledge is available at runtime.
+- **Clear governance** - Access stays scoped to identity and policy boundaries.
+- **Portable architecture** - Run in Fide Cloud or in your own Private Instance.
+
+---
+
+## Hosting Options
+
+- **Cloud** - Fide hosts the graph engine and manages scaling.
+- **Private Instance** - You run the same graph engine in your own infrastructure.
+
+Both options use the same product behavior and integration model.
+
+---
+
+## Start Here
+
+- **Set up your graph memory** -> [Guides](/docs/graph/guides)
+- **Integrate with the Graph API** -> [API Reference](/docs/graph/api/v1)
+- **Understand the protocol foundation** -> [Fide Context Protocol](/docs/fcp)

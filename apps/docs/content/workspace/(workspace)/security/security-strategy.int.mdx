@@ -1,0 +1,101 @@
+---
+title: Security Strategy [Int]
+description: Strategy for RLS, authentication, and access control.
+---
+
+**Related**: See `agent-context/TOOL-PACK-HIERARCHY-STRATEGY.md` for tool pack configuration (capabilities). This document covers RLS/permissions (data access).
+
+## Current principles
+- RLS-first: data access goes through RLS-enforced Supabase clients or approved RPCs.
+- Team scoping: queries filter by team_id/membership.
+- Role-aware checks: `has_permission(...)` (or equivalent) precede actions.
+- Runtime calls avoid service/admin role; those are reserved for migrations/maintenance.
+
+## Current practice
+- Agents/tools/workflows use provided RLS clients; admin clients are not used in tool/step code.
+- Background/server tasks default to RLS; service role is rare and must be justified/audited.
+
+## RPC usage
+- RPCs are used to encapsulate permission checks or complex operations.
+- Expected to enforce team scope and permissions; RPCs that would bypass RLS are restricted/audited.
+
+## References
+- RLS policies source of truth: `fide/db/supabase/_json/rls.json`.
+- RPC/functions source of truth: `fide/db/supabase/_json/functions.json`.
+- This doc should be refreshed when those JSON files change.
+
+## Secrets and connections
+- BYOS is preferred for blobs (platform connections like S3/GDrive) over Postgres storage.
+- Secrets live in connection stores/secret manager, referenced by ID and fetched with RLS context.
+- Integrations define egress allowlists and required scopes; secrets are redacted from logs/prompts.
+
+## Audit and logging (current intent)
+- Capture who/what/when, resource or workflow/tool id, team_id, success/failure (with redaction).
+- Large payloads are truncated; sensitive fields are excluded.
+- Alerts may be raised on repeated permission denials or cross-team attempts.
+
+## Team Management Permissions
+
+### Team Creation and Deletion
+
+**Permissions:**
+- `team.create` - Create sub-teams within a team
+- `team.delete` - Delete teams
+
+**RLS Policies:**
+
+**INSERT (Create Teams):**
+- Root teams (`parent_team_id IS NULL`): No restriction - anyone can create
+- Sub-teams (`parent_team_id IS NOT NULL`): Requires `team.create` permission in parent team
+
+**DELETE (Delete Teams):**
+- Requires `team.delete` permission in the team being deleted
+
+**UPDATE (Modify Teams):**
+- Requires `team.update` permission in the team being modified
+- When setting/changing `parent_team_id`: Must be Admin role in the new parent team
+- Removing parent (`parent_team_id` → NULL): Only requires `team.update` permission
+
+**Default Role Grants:**
+- Admin role has both `team.create` and `team.delete` permissions
+- See `_strategies/teams/TEAM-HIERARCHY-STRATEGY.md` for hierarchy management details
+
+## Implicit Team Membership (Hierarchy-Based Access)
+
+Teams form hierarchies via `parent_team_id`. Each team controls implicit access in both directions:
+
+**Parent→Child Access:**
+- Child team sets `implicit_parent_access_role_id` to role parent members receive
+- If NULL, parent members have NO implicit access
+- Parents can view/access child team data with that role
+
+**Child→Parent Access:**
+- Parent team sets `implicit_child_access_role_id` to role child members receive
+- If NULL, child members have NO implicit access
+- Children can view/access parent team data with that role
+
+**Implementation:**
+- Materialized view `effective_team_members` pre-computes all memberships (direct + implicit)
+- Security functions `is_team_member()` and `has_permission()` check this view
+- Refresh via `refresh_effective_team_members()` after hierarchy/membership changes
+- Maximum hierarchy depth: 10 levels (prevents loops)
+- Inactive teams excluded from implicit access
+
+**Common patterns:**
+- Full transparency: All teams set both roles to "Viewer"
+- Privacy default: All teams have NULL (only direct members access)
+- Executive oversight: Parent allows child viewing, but not reverse
+
+**Security considerations:**
+- Direct membership takes precedence over implicit
+- NULL role = explicit opt-in to access (secure default)
+- Implicit role can be less permissive than direct role (typical: direct=Member, implicit=Viewer)
+
+See `_strategies/teams/TEAM-HIERARCHY-STRATEGY.md` for design patterns and best practices.
+
+## Testing posture (desired/ongoing)
+- Permission tests per table/RPC cover allow and deny paths.
+- Cross-team/anonymous access is explicitly tested to be blocked.
+- Implicit membership tests verify parent→child and child→parent access work correctly.
+- NULL role configurations prevent implicit access as expected.
+

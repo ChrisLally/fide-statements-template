@@ -1,0 +1,810 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "version": "1.0.0",
+    "title": "Fide API",
+    "description": "Unified API specification for Gateway, Graph, and Workspace APIs."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3001",
+      "description": "Local development"
+    },
+    {
+      "url": "https://api.fide.work",
+      "description": "Production"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "apiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key",
+        "description": "Graph API key header. Format: sk_..."
+      },
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Authorization bearer token (JWT)."
+      }
+    },
+    "schemas": {
+      "GatewayHealthResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "The status of the gateway service",
+            "example": "ok"
+          },
+          "uptime": {
+            "type": "number",
+            "description": "The uptime of the process in seconds",
+            "example": 123.45
+          },
+          "timestamp": {
+            "type": "string",
+            "description": "The current server timestamp",
+            "example": "2024-02-09T10:54:19Z"
+          }
+        },
+        "required": [
+          "status",
+          "uptime",
+          "timestamp"
+        ]
+      },
+      "GraphHealthResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "The status of the graph service",
+            "example": "ok"
+          },
+          "uptime": {
+            "type": "number",
+            "description": "The uptime of the process in seconds",
+            "example": 123.45
+          },
+          "timestamp": {
+            "type": "string",
+            "description": "The current server timestamp",
+            "example": "2024-02-09T10:54:19Z"
+          }
+        },
+        "required": [
+          "status",
+          "uptime",
+          "timestamp"
+        ]
+      },
+      "GraphStatementItem": {
+        "type": "object",
+        "properties": {
+          "statementFingerprint": {
+            "type": "string"
+          },
+          "subjectFideId": {
+            "type": "string"
+          },
+          "subjectRawIdentifier": {
+            "type": "string"
+          },
+          "predicateFideId": {
+            "type": "string"
+          },
+          "predicateRawIdentifier": {
+            "type": "string"
+          },
+          "objectFideId": {
+            "type": "string"
+          },
+          "objectRawIdentifier": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "statementFingerprint",
+          "subjectFideId",
+          "subjectRawIdentifier",
+          "predicateFideId",
+          "predicateRawIdentifier",
+          "objectFideId",
+          "objectRawIdentifier"
+        ]
+      },
+      "GraphStatementsResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GraphStatementItem"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ]
+      },
+      "GraphErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "error"
+        ]
+      },
+      "GraphEntityResponse": {
+        "type": "object",
+        "properties": {
+          "entityFideId": {
+            "type": "string"
+          },
+          "primaryRawIdentifier": {
+            "type": "string"
+          },
+          "aliases": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "statements": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "statementFingerprint": {
+                  "type": "string"
+                },
+                "subjectFideId": {
+                  "type": "string"
+                },
+                "subjectRawIdentifier": {
+                  "type": "string"
+                },
+                "predicateFideId": {
+                  "type": "string"
+                },
+                "predicateRawIdentifier": {
+                  "type": "string"
+                },
+                "objectFideId": {
+                  "type": "string"
+                },
+                "objectRawIdentifier": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "statementFingerprint",
+                "subjectFideId",
+                "subjectRawIdentifier",
+                "predicateFideId",
+                "predicateRawIdentifier",
+                "objectFideId",
+                "objectRawIdentifier"
+              ]
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "entityFideId",
+          "primaryRawIdentifier",
+          "aliases",
+          "statements",
+          "nextCursor"
+        ]
+      },
+      "GraphEntityErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "error"
+        ]
+      },
+      "GraphSearchItem": {
+        "type": "object",
+        "properties": {
+          "fideId": {
+            "type": "string"
+          },
+          "rawIdentifier": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "sourceType": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "fideId",
+          "rawIdentifier",
+          "type",
+          "sourceType"
+        ]
+      },
+      "GraphSearchResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GraphSearchItem"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ]
+      },
+      "GraphSearchErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "error"
+        ]
+      },
+      "WorkspaceHealthResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "The status of the workspace service",
+            "example": "ok"
+          },
+          "uptime": {
+            "type": "number",
+            "description": "The uptime of the process in seconds",
+            "example": 123.45
+          },
+          "timestamp": {
+            "type": "string",
+            "description": "The current server timestamp",
+            "example": "2024-02-09T10:54:19Z"
+          }
+        },
+        "required": [
+          "status",
+          "uptime",
+          "timestamp"
+        ]
+      },
+      "WorkspacePermissionsMeResponse": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "description": "User principal resolved from the API key.",
+            "example": "user_123"
+          },
+          "workspaces": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "workspaceId": {
+                  "type": "string",
+                  "description": "Workspace/team identifier.",
+                  "example": "team_123"
+                },
+                "permissions": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Effective permission slugs within this workspace.",
+                  "example": [
+                    "graph:read"
+                  ]
+                }
+              },
+              "required": [
+                "workspaceId",
+                "permissions"
+              ]
+            },
+            "description": "Workspace-scoped effective permissions."
+          }
+        },
+        "required": [
+          "userId",
+          "workspaces"
+        ]
+      },
+      "WorkspacePermissionsMeError": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "error"
+        ]
+      }
+    },
+    "parameters": {}
+  },
+  "paths": {
+    "/gateway/v1/health": {
+      "get": {
+        "summary": "Check Gateway API Health",
+        "tags": [
+          "Gateway"
+        ],
+        "responses": {
+          "200": {
+            "description": "Gateway API is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GatewayHealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/graph/v1/health": {
+      "get": {
+        "summary": "Check Graph API Health",
+        "tags": [
+          "Graph"
+        ],
+        "responses": {
+          "200": {
+            "description": "Graph API is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphHealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/graph/v1/statements": {
+      "get": {
+        "summary": "List Graph Statements",
+        "description": "List resolved graph statements with keyset pagination.",
+        "tags": [
+          "Graph"
+        ],
+        "security": [
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "Filter by resolved subject Fide ID",
+              "example": "did:fide:0x15a1b2c3d4e5f6789012345678901234567890ab"
+            },
+            "required": false,
+            "name": "subjectFideId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "Filter by predicate Fide ID",
+              "example": "did:fide:0x655e4f6fe94f721628ec6c5d88703f1f4f945a2f"
+            },
+            "required": false,
+            "name": "predicateFideId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "Filter by resolved object Fide ID",
+              "example": "did:fide:0x15b1b2c3d4e5f6789012345678901234567890cd"
+            },
+            "required": false,
+            "name": "objectFideId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50,
+              "description": "Max number of items to return (1-200)",
+              "example": 50
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "Opaque cursor for keyset pagination",
+              "example": "eyJrIjoiMDAxMjM0In0"
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated statements",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphStatementsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/graph/v1/entities/{fideId}": {
+      "get": {
+        "summary": "Get Graph Entity",
+        "description": "Returns canonical entity details, aliases, and recent statements.",
+        "tags": [
+          "Graph"
+        ],
+        "security": [
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "Entity Fide ID",
+              "example": "did:fide:0x15a1b2c3d4e5f6789012345678901234567890ab"
+            },
+            "required": true,
+            "name": "fideId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 25
+            },
+            "required": false,
+            "name": "statementsLimit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "statementsCursor",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Entity found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphEntityResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphEntityErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphEntityErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphEntityErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Entity not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphEntityErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/graph/v1/search": {
+      "get": {
+        "summary": "Search Graph Entities",
+        "description": "Search resolved graph identifiers with keyset pagination.",
+        "tags": [
+          "Graph"
+        ],
+        "security": [
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Search query (raw identifier substring)",
+              "example": "alice"
+            },
+            "required": true,
+            "name": "q",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "0",
+                "a",
+                "e",
+                "1",
+                "2",
+                "7",
+                "3",
+                "4",
+                "5",
+                "6",
+                "8"
+              ],
+              "description": "Optional entity type-char filter",
+              "example": "1"
+            },
+            "required": false,
+            "name": "type",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "description": "Max number of items to return (1-100)",
+              "example": 20
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "Opaque cursor for keyset pagination",
+              "example": "eyJrIjoiMDAxMjM0In0"
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Search results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphSearchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query input",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphSearchErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphSearchErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraphSearchErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspace/v1/health": {
+      "get": {
+        "summary": "Check Workspace API Health",
+        "tags": [
+          "Workspace"
+        ],
+        "responses": {
+          "200": {
+            "description": "Workspace API is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceHealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/workspace/v1/permissions/me": {
+      "get": {
+        "summary": "Get Effective Permissions",
+        "description": "Returns workspace-scoped effective permission slugs for the authenticated API key principal.",
+        "tags": [
+          "Workspace"
+        ],
+        "security": [
+          {
+            "apiKeyAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "Optional workspace/team ID to filter permissions.",
+              "example": "team_123"
+            },
+            "required": false,
+            "name": "workspaceId",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Effective permissions for current principal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspacePermissionsMeResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspacePermissionsMeError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspacePermissionsMeError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "webhooks": {}
+}

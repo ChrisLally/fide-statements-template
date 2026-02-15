@@ -1,0 +1,7 @@
+{
+  "attestationsPath": "fcp-attestations",
+  "metadata": {
+    "name": "Example Registry",
+    "description": "Example FCP registry configuration"
+  }
+}

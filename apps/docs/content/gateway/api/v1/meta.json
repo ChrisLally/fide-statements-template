@@ -1,0 +1,12 @@
+{
+    "title": "API",
+    "description": "FCP REST API (v1)",
+    "defaultOpen": false,
+    "root": true,
+    "icon": "Code",
+    "pages": [
+      "index",
+      "health-get"
+    ]
+  }
+  

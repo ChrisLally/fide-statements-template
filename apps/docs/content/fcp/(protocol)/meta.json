@@ -1,0 +1,20 @@
+{
+  "title": "Fide Context Protocol",
+  "description": "Protocol overview",
+  "defaultOpen": false,
+  "root": true,
+  "pages": [
+    "index",
+    "---Structure---",
+    "entities",
+    "identifiers",
+    "schema",
+    "---Lifecycle---",
+    "attesting",
+    "broadcasting",
+    "indexing",
+    "---Applications---",
+    "querying",
+    "evaluating"
+  ]
+}

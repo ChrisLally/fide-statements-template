@@ -1,0 +1,81 @@
+---
+title: "Attributes"
+description: "Describing what entities are and what they have"
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
+Attributes are statements that describe properties of an entity. **Subject (Entity) → Predicate → Object (value)**.
+
+<TypeTable
+  type={{
+    subject: { description: 'Entity being described (e.g. Person, Organization)', type: 'Fide ID' },
+    predicate: { description: 'Property term — must use 0x65 (CreativeWork+Product) or 0xe5 (EvaluationMethod+Product)', type: 'Fide ID' },
+    object: { description: 'Value — typically CreativeWork (0x66) for literals, or another entity for references', type: 'Fide ID' },
+  }}
+/>
+
+---
+
+## Core Attributes [#core] [#core-attributes]
+
+| Subject | Predicate | Object |
+|---------|-----------|--------|
+| `did:fide:0x15...` (Alice) | `did:fide:0x65...` (`schema:type`) | `did:fide:0x66...` ("schema:Person") |
+| `did:fide:0x15...` (Alice) | `did:fide:0x65...` (`schema:name`) | `did:fide:0x66...` ("Alice Smith") |
+| `did:fide:0x15...` (Alice) | `did:fide:0x65...` (`schema:description`) | `did:fide:0x66...` ("Software Engineer") |
+
+<Callout type="warning" title="Danger: Don't Use Names as IDs">
+Avoid deriving IDs from common names. "Alice Smith" produces the same ID for every Alice Smith. The name should be a `schema:name` attribute, while the Entity should be identified by a [Primary Fide ID](/docs/identifiers), CryptographicAccount, or Platform ID.
+</Callout>
+
+<Callout title="Why no schema:identifier?" type="info">
+Fide IDs **are** the identifiers. We don't use `schema:identifier` strings.
+
+To link an entity to an external account (like GitHub or Twitter), use a **Relationship** ([`sameAs`](/docs/schema/relationships#sameas) or [`sec:controller`](/docs/schema/relationships#control)) to the **Entity Identifier** representing that account (e.g., `did:fide:0x15...`), rather than a string attribute.
+</Callout>
+
+---
+
+## Context & Timestamps [#context]
+
+Timestamps and validity periods are also attributes! However, they usually describe the **Statement** or the **Attestation**, not the Entity itself.
+
+
+### Core FCP Predicates [#fcp-predicates]
+
+| Context | Subject | Predicate | Object (Timestamp) |
+|---------|---------|-----------|--------------------|
+| **Attestation Timestamp (optional)** | Attestation Fide ID | `prov:generatedAtTime` | "2026-01-23T12:00:00Z" |
+
+### Common Schema.org Predicates [#schema-predicates]
+
+| Context | Subject | Predicate | Object (Timestamp) |
+|---------|---------|-----------|--------------------|
+| **Valid From** | Statement Fide ID | `schema:validFrom` | "2026-01-01T00:00:00Z" |
+| **Valid Until** | Statement Fide ID | `schema:validThrough` | "2026-12-31T23:59:59Z" |
+
+<Callout title="Why is this powerful?" type="info">
+By treating time as an attribute of the statement, you can have multiple conflicting statements about the same entity that are valid at different times (e.g., "Alice works at Google" [2020-2022] vs "Alice works at OpenAI" [2023-Present]).
+</Callout>
+
+<Callout title="Timestamp Requirement (Strict)" type="warning">
+All temporal values must be full RFC 3339 UTC timestamps (for example, `"2026-01-01T00:00:00Z"`), and indexers should persist them as `timestamptz`.
+
+Do not use date-only strings (for example, `"2026-01-01"`), local-time timestamps without a zone, or relative text like "yesterday."
+</Callout>
+
+---
+
+## Controller Attributes [#controller]
+
+Sometimes you want to describe the *controller* of an entity without knowing their specific ID. You can use `controller:*` predicates.
+
+**Pattern:**
+`Subject (Social Account) → controller:skill → "Rust Definition"`
+
+**Meaning:**
+"Whoever controls this social account has the skill 'Rust Development'."
+
+This allows you to attach reputation to anonymous controllers via their public assets.

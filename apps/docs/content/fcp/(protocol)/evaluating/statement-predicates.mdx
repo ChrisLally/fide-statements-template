@@ -1,0 +1,82 @@
+---
+title: "Statement Predicates"
+description: Evaluation methods for determining semantic relationships between predicates used in FCP statements.
+---
+
+## Fide-OwlEquivalentProperty-StatementPredicate-v1
+
+Determine whether two predicates used in FCP statements are semantically equivalent across vocabularies.
+
+Are `https://schema.org/worksFor` and `https://dbpedia.org/ontology/employer` interchangeable when used as statement predicates? This method evaluates `owl:equivalentProperty` claims between predicate Fide IDs.
+
+#### Fide-OwlEquivalentProperty-StatementPredicate-v1:Subject
+
+The statement claim being evaluated. Raw identifiers must be full IRIs for all statement parts.
+
+<Callout type="info">
+**The Object is always the primary predicate** you want to resolve to; the Subject is the predicate requiring alignment.
+</Callout>
+
+| Statement Part | Raw Identifier | Fide ID |
+|----------------|----------------|---------|
+| Subject | `https://dbpedia.org/ontology/employer` | `did:fide:0x65` |
+| Predicate | `http://www.w3.org/2002/07/owl#equivalentProperty` | `did:fide:0x65` |
+| Object | `https://schema.org/worksFor` | `did:fide:0x65` |
+
+#### Evaluation
+
+The evaluation statement structure.
+
+| Statement Part | Raw Identifier | Fide ID |
+|----------------|----------------|---------|
+| Subject | Statement: Fide-OwlEquivalentProperty-StatementPredicate-v1:Subject | `did:fide:0x60` |
+| Predicate | Fide-OwlEquivalentProperty-StatementPredicate-v1 EvaluationMethod (e.g., GitHub spec link) | `did:fide:0xe5` |
+| Object | Verdict: `-1`, `0`, or `1` | `did:fide:0x66` |
+
+#### Evaluation Criteria
+
+| Verdict | Meaning | Criteria |
+|---------|---------|----------|
+| `1` | Equivalent | The predicates are interchangeable in all normal use cases. Authoritative sources (Schema.org, DBpedia, W3C specs) document the alignment. |
+| `0` | Uncertain | The equivalence is domain-dependent or context-specific. Edge cases exist where the predicates diverge. |
+| `-1` | Not Equivalent | The predicates have fundamentally different semantics, different domains, or different ranges. |
+
+---
+
+## Fide-OwlInverseOf-StatementPredicate-v1
+
+Determine whether two predicates used in FCP statements describe the same relationship from opposite directions.
+
+Are `https://schema.org/worksFor` and `https://schema.org/employee` inverses? If Alice `worksFor` ACME, then ACME `employee` Alice — the same semantic fact, expressed from different sides.
+
+#### Fide-OwlInverseOf-StatementPredicate-v1:Subject
+
+The statement claim being evaluated. Raw identifiers must be full IRIs for all statement parts.
+
+<Callout type="info">
+**The Object is always the primary predicate** you want to use as the reference direction; the Subject is the inverse predicate requiring alignment.
+</Callout>
+
+| Statement Part | Raw Identifier | Fide ID |
+|----------------|----------------|---------|
+| Subject | `https://schema.org/employee` | `did:fide:0x65` |
+| Predicate | `http://www.w3.org/2002/07/owl#inverseOf` | `did:fide:0x65` |
+| Object | `https://schema.org/worksFor` | `did:fide:0x65` |
+
+#### Evaluation
+
+The evaluation statement structure.
+
+| Statement Part | Raw Identifier | Fide ID |
+|----------------|----------------|---------|
+| Subject | Statement: Fide-OwlInverseOf-StatementPredicate-v1:Subject | `did:fide:0x60` |
+| Predicate | Fide-OwlInverseOf-StatementPredicate-v1 EvaluationMethod (e.g., GitHub spec link) | `did:fide:0xe5` |
+| Object | Verdict: `-1`, `0`, or `1` | `did:fide:0x66` |
+
+#### Evaluation Criteria
+
+| Verdict | Meaning | Criteria |
+|---------|---------|----------|
+| `1` | Inverse | The predicates describe the same relationship with subject and object swapped. Authoritative sources document this inverse relationship. |
+| `0` | Uncertain | The inverse relationship is partial or domain-dependent. |
+| `-1` | Not Inverse | The predicates are unrelated or describe fundamentally different relationships. |

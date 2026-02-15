@@ -1,0 +1,10 @@
+{
+  "title": "Connections",
+  "defaultOpen": false,
+  "pages": [
+    "communication-channels",
+    "workflow-integrations",
+    "mcp-servers",
+    "tracing-servers"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+    "title": "API",
+    "description": "Fide Graph REST API (v1)",
+    "defaultOpen": false,
+    "root": true,
+    "icon": "Code",
+    "pages": [
+      "index",
+      "health-get",
+      "statements-get",
+      "entities-fideId-get",
+      "search-get"
+    ]
+  }
+  

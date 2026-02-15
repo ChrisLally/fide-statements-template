@@ -1,0 +1,25 @@
+---
+title: "Identity Resolution"
+description: Techniques for resolving decentralized identity clusters.
+---
+
+import { Card, Cards } from 'fumadocs-ui/components/card';
+
+When multiple Fide IDs (e.g., from `x.com/alice` and `github.com/alice`) are linked via `owl:sameAs` statements, they form a cluster of Fide IDs representing the same entity.
+
+To consistently identify this entity, indexers must choose a single **Primary Fide ID** from the cluster.
+
+There are two initially suggested strategies for this:
+
+<Cards>
+  <Card
+    title="Min Calculated Fide ID"
+    href="/docs/guides/identity-resolution/min"
+    description="The standard, decentralized approach. Determines the Primary Fide ID using simple lexical hashing. Fast, deterministic, and requires no coordination."
+  />
+  <Card
+    title="Genesis Statement Fide ID"
+    href="/docs/guides/identity-resolution/genesis-statement"
+    description="An advanced pattern for stable identity. Derives a permanent Fide ID from the entity's first appearance in the graph to prevent ID rotation."
+  />
+</Cards>

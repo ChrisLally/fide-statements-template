@@ -1,0 +1,34 @@
+{
+  "logIndex": "2006224",
+  "logId": {
+    "keyId": "zxGZFVvd0FEmjR8WrFwMdcAJ9vtaY/QXf44Y1wUeP6A="
+  },
+  "kindVersion": {
+    "kind": "hashedrekord",
+    "version": "0.0.2"
+  },
+  "integratedTime": "0",
+  "inclusionPromise": null,
+  "inclusionProof": {
+    "logIndex": "2006224",
+    "rootHash": "1EawRPBN/o5+yK3KC5aOIT8Ok/94mLT97rE65HM52rg=",
+    "treeSize": "2006225",
+    "hashes": [
+      "9vhoKkMIlu61yQcOjAGrWseD3BZJt4J2e1s+IU1Ysr8=",
+      "3GZjbFG3wWDn4fxwIl9u1WmdeFNCtL8+yLHFSUUcO7U=",
+      "zxHLehcu3Yz5urAz7a1O0Dcsc/e93OR6P+scVki+K54=",
+      "VEm9GZ4fcFEL00f9Jkv7Z/TWjzdkl5p2HEnBzAQYvow=",
+      "zBajM3dmPhOfVkTyd6tCy/cssV8y2HLUN1KuqwEz/sk=",
+      "7RbpIhNvwZaZu3rt1WJSNodfDXXrE4dkGYOcolegotk=",
+      "VdutVCivHcVRinDASIaKmXcDbakKm8/U2G3eC+OXHgU=",
+      "LP2re6YmJb8ZoMjicnIPPrhkT+yUhmfZvAB0lqUVu/g=",
+      "l4rrQAlI7lCey75ZanlIBXBVdtrLP02PqpY1iaWe6J8=",
+      "gQjEdtXzPHZZP9Q40PKd+zzw0NXkvWxCojRdrACIJB0=",
+      "l5Q8BvbaigADpVMue/QQ+7rlxDVErH3Fzk46wAlGrjY="
+    ],
+    "checkpoint": {
+      "envelope": "log2025-1.rekor.sigstore.dev\n2006225\n1EawRPBN/o5+yK3KC5aOIT8Ok/94mLT97rE65HM52rg=\n\n— log2025-1.rekor.sigstore.dev zxGZFYKs4W5S9Qh8YXxaxUiPe5npVQynYRL4AZ/LD196xt5dUG0u4QXGlaN5ZwfZ/dqaujwE5aWl9ttlHOtG06T2PQs=\n"
+    }
+  },
+  "canonicalizedBody": "eyJhcGlWZXJzaW9uIjoiMC4wLjIiLCJraW5kIjoiaGFzaGVkcmVrb3JkIiwic3BlYyI6eyJoYXNoZWRSZWtvcmRWMDAyIjp7ImRhdGEiOnsiYWxnb3JpdGhtIjoiU0hBMl8yNTYiLCJkaWdlc3QiOiJ5bGZjZDZoZVN3NkN0cXVJbU94M3Vvd1VJWU1GWEc5M09WWVhWekxuZzVzPSJ9LCJzaWduYXR1cmUiOnsiY29udGVudCI6Ik1FVUNJUUMxZVI3KzVCRXZHQWZjZzhXS3lxYU9WdWE0cGZwanYvWlY1WUxvd1pPT2tBSWdHV2t5RUZxV2RMVnIrWjB3Sjd6dGNFcG10VTNKdXZFVTNobUdqL2hhWTJVPSIsInZlcmlmaWVyIjp7ImtleURldGFpbHMiOiJQS0lYX0VDRFNBX1AyNTZfU0hBXzI1NiIsInB1YmxpY0tleSI6eyJyYXdCeXRlcyI6Ik1Ga3dFd1lIS29aSXpqMENBUVlJS29aSXpqMERBUWNEUWdBRU9kVGNUK0lIY3dWWDFyUE9uZWRQWW91azNkMG11ZUMzY0hZMUJ3ckc0SFV4VVJXZzJMRTdWMXdUbnEyYzdpUGhsVVAzQmJxK2NsU0tCbG04dzF6cG1BPT0ifX19fX19"
+}

@@ -1,0 +1,167 @@
+---
+title: "Evaluating"
+description: How to define methodologies and broadcast trust signals into the Fide Context Graph.
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
+
+**Evaluating** is the Trust-Signal Authoring Path of the Fide Context Protocol.
+This page covers how applications define methods and issue evaluation statements. For read-time aggregation and weighting, see [**Query & Consensus**](/docs/querying#consensus).
+
+An evaluation is simply a [Statement](/docs/schema#statement) where:
+- **Subject**: The entity being evaluated
+- **Predicate**: An [EvaluationMethod](/docs/entities#evaluation-method) ID
+- **Object**: A score, verdict, or level
+
+---
+
+## 1. Defining a Methodology [#methods]
+
+Before you can evaluate, you must define **HOW** you evaluate. This is done by creating an [**EvaluationMethod**](/docs/entities#evaluation-method) entity.
+
+<Callout type="info">
+Looking for [**EvaluationMethod ID calculation**](/docs/entities#evaluation-method)?
+</Callout>
+
+### Method Types [#types]
+
+Your method type depends on the subject and intent:
+
+| Type | Purpose | Examples |
+|------|---------|----------|
+| **Reputation** | Trust scoring for **any** entity | Community Trust Score, PageRank |
+| **Fact-Check** | Verifying statements | FactCheck-bot, Statement Verification |
+| **Quality** | Assessing product/content quality | Code Audit, NSFW Detection |
+| **Compliance** | Regulatory checks | KYC Verification, SOC2 Review |
+
+### Output Styles [#outputs]
+
+Every method must declare its output scale so indexers know how to interpret the value:
+
+| Output Type | Values | Use For |
+|-------------|--------|---------|
+| **Verdict** | `-1`, `0`, `1` | Discrete judgments (False/Unverified/True) |
+| **Score** | `0` to `100` | Continuous ratings (0=Bad, 100=Perfect) |
+| **Level** | `1` to `5` | Ranked tiers (1=Low Priority, 5=Critical) |
+
+<Accordions>
+<Accordion title="Example: Defining a Methodology Entity">
+
+This EvaluationMethod entity records your method metadata in the Fide Context Graph so indexers and applications can interpret the signal consistently.
+
+```typescript
+const myEvaluationMethod = {
+  // Protocol-native primary derived from a Genesis Statement (see Entities)
+  evaluationMethodFideId: await calculateFideId("EvaluationMethod", "Statement", "did:fide:0x00..."), // did:fide:0xe0... (Genesis Statement Fide ID)
+  type: "EvaluationMethod",
+  attributes: {
+    "schema:name": "Community Trust Score v1.0",
+    "schema:description": "Evaluates reputation based on peer reviews. Output: Score 0-100.",
+    "schema:softwareVersion": "1.0"
+  }
+};
+// This object is conceptual shorthand for docs readability.
+// In protocol data, publish each key-value pair as its own Statement:
+// subject=evaluationMethodFideId, predicate=schema:name, object="Community Trust Score v1.0", etc.
+```
+
+</Accordion>
+</Accordions>
+
+---
+
+## 2. Issuing Evaluations [#issuing]
+
+Once your methodology is defined, you can start issuing evaluations.
+
+### Structure [#structure]
+
+An evaluation is a signed statement where the **predicate is your method ID**.
+
+```typescript
+const evaluationStatement = {
+  subjectFideId: "did:fide:0x10...",                   // Alice (Person)
+  predicateFideId: "did:fide:0xe0...",                 // Your EvaluationMethod (see Entities)
+  objectFideId: await calculateFideId("CreativeWork", "CreativeWork", "85")   // The Value "85" (did:fide:0x66...)
+};
+```
+
+<Callout title="Updates & Corrections" type="info">
+To update a score, use the [**Correction Pattern**](/docs/schema/relationships#correction):
+1.  Issue a new statement with the new score.
+2.  Link it to the old statement via `prov:wasRevisionOf`.
+</Callout>
+
+---
+
+## 3. Persistence Strategy [#persistence]
+
+**Not all evaluations need to be stored as signed statements.**
+
+Deciding when to **store** (create immutable signed statements) vs. **compute** (calculate on demand) is a critical architectural choice.
+
+| Strategy | Pattern | Best For | Trade-offs |
+|----------|---------|----------|------------|
+| **Signed Statements** | Store every verdict | Audits, Binary Decisions (True/False), Policy Violations | ✅ Full History<br/>❌ High Write Load |
+| **Snapshots** | Store periodic updates | Reputation Scores (0-100), Dynamic Metrics | ✅ Good balance<br/>✅ "Current" queryable |
+| **Computed** | Never store, API only | Real-time counts, High-frequency signals | ✅ Zero storage<br/>❌ No history/audit |
+
+<Accordions>
+<Accordion title="Decision Guide: When to Store?">
+
+### Implementation: The Snapshot Pattern
+
+For scores that change often (e.g., reputation), don't store every tiny change. Use a threshold:
+
+```typescript
+// Only store if score changes by > 5 points
+if (Math.abs(newScore - lastStoredScore) > 5) {
+  publishStatement(newScore);
+}
+```
+
+This preserves the "audit trail" of major shifts without spamming the graph with noise (85.1 -> 85.2).
+
+</Accordion>
+</Accordions>
+
+---
+
+## Standard Evaluation Methods (Reference Patterns) [#reference-methods]
+
+These are reference method patterns you can implement as [EvaluationMethod](/docs/entities#evaluation-method) entities. They are intended as practical defaults, not mandatory protocol predicates.
+
+<Callout type="info">
+  Default methods are represented as [EvaluationMethod](/docs/entities#evaluation-method) entities with stable names (for example `Fide-StatementAccuracy-v1`) and protocol-native IDs (for example `did:fide:0xe0...`).
+</Callout>
+
+### Semantic Alignment Methods
+
+- [**Statement Predicates**](/docs/evaluating/statement-predicates) — Evaluate semantic relationships between predicates (`owl:equivalentProperty`, `owl:inverseOf`)
+- [**Entity Identity**](/docs/evaluating/entity-identity) — Determine whether two identifiers refer to the same real-world entity (`owl:sameAs`)
+
+### General Evaluation Methods
+
+- [**Statement Evaluation**](/docs/evaluating/statement-evaluation) — Assess factual accuracy and consensus of statements (StatementAccuracy, BridgingConsensus)
+- [**Content Evaluation**](/docs/evaluating/content-evaluation) — Evaluate satisfaction and readability of creative works (TaskSatisfaction, NonTechnicalReadability)
+
+<Callout type="info" title="Where is Reputation?">
+  **Trust is subjective.** We deliberately do not define a standard "Reputation Score" or "Reliability Metric" in v1. Valid strategies range from simple whitelists to complex PageRank algorithms.
+
+  Developers should build their own reputation models by aggregating the atomic signals above (Facts, Tasks, Content) according to their own risk tolerance.
+</Callout>
+
+<Callout type="warning" title="Anti-Patterns: What is NOT an Evaluation Method?">
+  *   **Binary Relationships:** If the output is just a link (e.g., "I accept this PR"), use a [Relationship Predicate](/docs/schema/relationships) such as `schema:review` or `schema:creator`, typically not an evaluation.
+  *   **Future Predictions:** Evaluations measure *past or present* quality. Predictions about the future are Statements, not Evaluations.
+  *   **Undefined Subjectivity:** If the method cannot be explicitly described as an algorithm or recipe, it is typically an **Attribute** (e.g., "favorite color"), not an Evaluation Method.
+</Callout>
+
+---
+
+## Next Steps [#next-steps]
+
+Now that you've created evaluations, how do applications use them?
+
+*   [**Query & Consensus**](/docs/querying) — How to read, aggregate, and weight these signals to form ground truth.

@@ -1,0 +1,15 @@
+{
+  "title": "Tools",
+  "description": "Developer and exploration tools for FCP",
+  "root": true,
+  "pages": [
+    "index",
+    "--- Identity ---",
+    "identity-inspector",
+    "--- Fide ID ---",
+    "fide-id-calculator",
+    "--- Statements & Attestations ---",
+    "statement-builder",
+    "attestation-verifier"
+  ]
+}

@@ -1,0 +1,60 @@
+---
+title: Workflow Integrations
+description: Connect agents to external services for automated workflows
+---
+
+Workflow Integrations let agents interact with external services to automate work.
+
+## What are Workflow Integrations?
+
+Workflow integrations connect Fide to external platforms that agents use to complete tasks:
+- Code repositories
+- Project management tools
+- Documentation systems
+- APIs and services
+
+## Supported Platforms
+
+### Philosophy: Source of Truth
+
+Fide acts as an integration application layer. We do not aim to replace your Project Management suite (Linear, Jira, etc).
+
+- **Orchestration**: High-frequency, agent-to-agent subtasks live in Fide to keep noise out of your PM tool.
+- **Project Management**: High-level, human-relevant tasks are synced to your PM tool (Linear, Jira projects) so your team stays in the loop where they already work.
+
+### GitHub
+
+- **Repository Access** - Read code, create branches
+- **Issues & PRs** - Create, update, comment
+- **Actions** - Trigger workflows
+- **Code Search** - Find relevant code
+
+### Linear
+- **Issues** - Create and manage issues
+- **Projects** - Track project progress
+- **Cycles** - Plan sprints
+- **Labels & Tags** - Organize work
+
+### Notion (Soon)
+- Document access
+- Database queries
+- Page creation
+
+### Jira (Soon)
+- Issue management
+- Sprint planning
+- Workflow automation
+
+## How Integrations Work
+
+1. **OAuth Connection** - User authorizes access
+2. **Scope Selection** - Choose what agents can do
+3. **Team Assignment** - Assign to teams
+4. **Agent Access** - Agents use via tool calls
+
+## Security
+
+- **Scoped Access** - Only requested permissions
+- **Team Boundaries** - Respects team isolation
+- **Audit Logs** - All actions tracked
+- **Revocable** - Disconnect anytime

@@ -1,0 +1,62 @@
+---
+title: Error Handling
+description: Managing failures in workflow execution
+---
+
+Workflows need robust error handling to be reliable in production.
+
+## Automatic Retries
+
+Failed steps automatically retry with exponential backoff:
+
+| Attempt | Delay |
+|---------|-------|
+| 1st retry | 1 second |
+| 2nd retry | 2 seconds |
+| 3rd retry | 4 seconds |
+| 4th retry | 8 seconds |
+
+Configure max retries per step (default: 3).
+
+## Fallback Steps
+
+Define what happens when retries are exhausted:
+
+- **Skip** - Continue to next step
+- **Fallback** - Run alternative step
+- **Fail** - Stop workflow
+
+## Error Notifications
+
+Get notified when workflows fail:
+
+- Email notifications
+- Slack/Telegram alerts
+- Webhook callbacks
+
+## Manual Intervention
+
+When automatic handling isn't enough:
+
+- **Pause** - Workflow waits for human
+- **Resume** - Human fixes and continues
+- **Retry** - Re-run failed step
+- **Skip** - Move past failure
+
+## Error Context
+
+Failed steps capture:
+
+- Error message
+- Stack trace (if available)
+- Input data
+- Timestamp
+- Retry count
+
+## Best Practices
+
+1. **Set appropriate timeouts** - Don't wait forever
+2. **Use fallbacks** - Have a plan B
+3. **Log context** - Capture data for debugging
+4. **Alert early** - Know when things break
+5. **Test failure paths** - Verify error handling works

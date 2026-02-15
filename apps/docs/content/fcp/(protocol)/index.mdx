@@ -1,0 +1,140 @@
+---
+title: FCP Introduction
+description: FCP is the standard for graphing context into trusted World Models.
+---
+
+import { SmartDocsCard } from '@/components/mdx/smart-docs-card';
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
+import { Card, Cards } from 'fumadocs-ui/components/card';
+
+Today, our digital world is fragmented. Every person, application, and agent maintains their own isolated view of reality. This separation creates **context amnesia**—where knowledge is locked in silos, and trust cannot travel.
+
+**Fide Context Protocol (FCP)** defines the standard for graphing context—capturing not just inputs and outputs, but the [**decision-making process**](/docs/schema/actions)—into trusted **World Models**.
+
+It allows both **Human** and **AI Actors** to build their own verifiable view of reality—whether private, public, or a mix of both. Instead of a single centralized truth, FCP **enables** an **Fide Context Graph** where reality is subjective: what you see depends on who and what you choose to [**trust**](/docs/querying#consensus).
+
+<Callout type="info" title="What is a 'World Model'?">
+  In AI, this term is used to describe three different things:
+
+  * **Physical Simulators** (like [LeCun's JEPA](https://ai.meta.com/blog/yann-lecun-ai-model-i-jepa/)): Systems that predict consequences and cause-and-effect.
+  * **Generative Models** (like [Sora](https://openai.com/sora)): Media models that understand 3D space, continuity, and object permanence.
+  * **Knowledge Graphs**: Structured maps of facts, relationships, and "ground truth."
+
+  **Here is the bottom line:**
+  Regardless of which definition you use, every World Model needs reliable data to function. 
+  
+  **FCP** is the standard for [**graphing context**](/docs/schema)—capturing the [Actions](/docs/schema/actions) and [Relationships](/docs/schema/relationships) needed to build trusted World Models of *any* type.
+</Callout>
+
+---
+
+## Fide Context Graph [#context-graph]
+
+Instead of locking data in silos, FCP sets the standard for building a **distributed Fide Context Graph** from which trusted World Models are created.
+
+### Structure [#structure]
+
+The graph is built from three core elements:
+
+- [**Entity Types**](/docs/entities) (entities) — Strictly defined types organized into [Active](/docs/entities#active), [Inactive](/docs/entities#inactive), and [Protocol](/docs/entities#protocol) entities
+- [**Statement Schema**](/docs/schema) (edges) — The unified pattern with [Attributes](/docs/schema/attributes), [Relationships](/docs/schema/relationships), and [Actions](/docs/schema/actions) connecting entities
+- [**Fide ID Identifiers**](/docs/identifiers) — Universal, content-addressed identifiers enabling location-independent entity recognition
+
+### Lifecycle [#lifecycle]
+
+Data flows through four stages:
+
+1. [**Drafting**](/docs/attesting#signing-statements) — Create unsigned [**Statements**](/docs/schema#statement) using the standardized schema
+2. [**Attesting**](/docs/attesting) — Sign statements with cryptographic proof of authorship (creating Attestations)
+3. [**Broadcasting**](/docs/broadcasting) — Publish attestations to distributed registries for discovery
+4. [**Indexing**](/docs/indexing) — Ingest, verify, and materialize attestations into a queryable store
+
+### Applications [#applications]
+
+Three primary use cases:
+
+- [**Query & Resolve**](/docs/querying) — Retrieve, resolve, and traverse data using [entity emergence](/docs/querying#resolve)
+- [**Consensus**](/docs/querying#consensus) — Aggregate trust signals to determine ground truth
+- [**Evaluating**](/docs/evaluating) — Create signals for the graph (Methods, Statements)
+
+---
+
+## Build with FCP [#build]
+
+Ready to start building? Use our official libraries to ensure protocol compliance and simplify development.
+
+<Cards>
+  <Card
+    title="JavaScript / TypeScript SDK"
+    href="/docs/sdks/js"
+    description="The production-ready SDK for Node.js and Browser. Handles Fide ID calculation, signing, and attestation creation."
+  />
+  <Card
+    title="SDK Overview"
+    href="/docs/sdks"
+    description="Learn about our language support, compliance guarantees, and planned SDKs."
+  />
+</Cards>
+
+---
+
+<Accordions>
+<Accordion title="Protocol Conventions">
+
+To maintain consistency between the protocol, data, and code, FCP adheres to standard software engineering conventions.
+
+| Concept | Casing | Example |
+| :--- | :--- | :--- |
+| **Predicates (Verbs)** | `lowerCamelCase` | `schema:actionStatus`, `sec:controller` |
+| **Entity Types (Nouns)** | `PascalCase` | `schema:Person`, `prov:SoftwareAgent` |
+| **Variables (Code)** | `camelCase` | `const fideId = ...` |
+
+This creates a clear visual distinction between **what something is** (Type) and **what properties it has** (Predicate).
+
+</Accordion>
+
+<Accordion title="Reference Implementation Architecture">
+
+This reference indexer implements a **Pure Graph Architecture** with these design choices (which are NOT protocol mandates):
+
+| Component | Choice | Rationale |
+|-----------|--------|-----------|
+| **Data Format** | JSONL | Streaming processing |
+| **Storage** | PostgreSQL with Enums | Scalable graph queries + database-level type safety |
+| **Core Tables** | 3 Tables | Unified statement graph (identifiers, statements, aliases) |
+| **Graph Pattern** | PROV-O Triangle | Provenance chains for attestation lineage |
+| **Identity Model** | Chain-Agnostic | Same address = same entity across all blockchains |
+| **Predicate Typing** | Fact vs Evaluation | Enables zero-lookup reputation queries |
+
+**Architecture Philosophy**: *Everything is a Statement.* Statements include:
+- Content (subject → predicate → object)
+- Provenance (`prov:wasGeneratedBy`, `prov:wasAssociatedWith`)
+- Identity (`sec:controller`, `owl:sameAs`)
+- Evaluations (reputation scores, reviews)
+
+*Protocol mandates such as [**Cryptographic Verification**](/docs/entities#cryptographic-account) and **SHA-256 hashing** (for Fide IDs) are enforced by the standard.*
+
+</Accordion>
+
+<Accordion title="License & Governance">
+
+The **Fide Context Protocol (FCP)** is an open standard:
+
+- **Protocol & Schemas**: Licensed under **[Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0.txt)**
+- **Documentation**: Licensed under **[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/legalcode.txt)**
+
+### Protocol Governance [#governance]
+
+FCP is a **Structural Standard**, not a Vocabulary Standard. We define *how* to graph context, not *what* words to use.
+
+| Aspect | Governance Model |
+|--------|---------------|
+| **Graph Structure** | Fide Team maintains the core Statement/Attestation schema schemas |
+| **Vocabulary** | We defer to **Schema.org**, **PROV-O**, and **W3C Security** for all predicates |
+| **New Terms** | If a concept is missing from standards, we propose it to W3C/Schema.org working groups |
+
+**Philosophy**: Don't reinvent the wheel. If a standard exists, use it.
+
+</Accordion>
+</Accordions>

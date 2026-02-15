@@ -1,0 +1,158 @@
+---
+title: Quickstart
+description: Create and sign your first Fide Attestation in under 5 minutes.
+---
+
+import { Step, Steps } from 'fumadocs-ui/components/steps';
+import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
+
+This guide will walk you through the core loop of the Fide Context Protocol using the JavaScript SDK: **Identify → State → Sign**.
+
+## Prerequisites
+
+- Node.js 18+ established in your environment.
+
+## Implementation
+
+<Steps>
+<Step>
+### Install the SDK
+
+<Tabs items={['npm', 'pnpm', 'yarn', 'bun']}>
+<Tab value="npm">
+```bash
+npm install @fide.work/fcp
+```
+</Tab>
+<Tab value="pnpm">
+```bash
+pnpm add @fide.work/fcp
+```
+</Tab>
+<Tab value="yarn">
+```bash
+yarn add @fide.work/fcp
+```
+</Tab>
+<Tab value="bun">
+```bash
+bun add @fide.work/fcp
+```
+</Tab>
+</Tabs>
+
+</Step>
+
+<Step>
+### Create a Statement
+
+First, we calculate the deterministic [Fide IDs](/docs/identifiers) for the entities involved (Subject, Predicate, Object) and combine them into a [Statement](/docs/schema#statement).
+
+```ts title="index.ts"
+import { 
+  calculateFideId, 
+  createStatement,
+} from '@fide.work/fcp';
+
+// 1. Define your Entities
+// Subject: A person (Alice) identified by her X profile
+const aliceId = await calculateFideId('Person', 'Product', 'https://x.com/alice');
+
+// Predicate: The concept of a "name" from Schema.org
+// Note: Predicates are usually type 'CreativeWork' (6) with source 'CreativeWork' (6)
+const namePredicateId = await calculateFideId('CreativeWork', 'CreativeWork', 'schema:name');
+
+// Object: The literal value "Alice"
+const nameValueId = await calculateFideId('CreativeWork', 'CreativeWork', 'Alice');
+
+// 2. Create the Statement
+// We provide raw identifiers so the SDK can validate the hashes internally.
+const statement = await createStatement({
+  subject: { 
+    fideId: aliceId, 
+    rawIdentifier: 'https://x.com/alice',
+    entityType: 'Person', 
+    sourceType: 'Product' 
+  },
+  predicate: { 
+    fideId: namePredicateId, 
+    rawIdentifier: 'schema:name',
+    entityType: 'CreativeWork', 
+    sourceType: 'CreativeWork'
+  },
+  object: { 
+    fideId: nameValueId, 
+    rawIdentifier: 'Alice',
+    entityType: 'CreativeWork', 
+    sourceType: 'CreativeWork'
+  }
+});
+
+console.log('Statement ID:', statement.statementFideId);
+```
+
+</Step>
+
+<Step>
+### Sign an Attestation
+
+Now we wrap that statement in a cryptographic [Attestation](/docs/attesting). This proves *you* asserted this statement.
+
+```ts title="index.ts"
+import { 
+  generateEd25519KeyPair, 
+  exportEd25519Keys,
+  createAttestation, 
+  signEd25519 
+} from '@fide.work/fcp';
+
+// ... (previous code)
+
+// 3. Setup a Signer (Ed25519)
+const keyPair = await generateEd25519KeyPair();
+const exported = await exportEd25519Keys(keyPair);
+const signerId = `ed25519::${exported.address}`;
+
+// 4. Create the Attestation
+// This builds a Merkle tree of statements (just one here) and signs the root.
+const attestation = await createAttestation(
+  [statement.statementFideId!], 
+  {
+    method: 'ed25519',
+    caip10User: signerId,
+    sign: (root) => signEd25519(root, keyPair.privateKey)
+  }
+);
+
+console.log('Attestation ID:', attestation.attestationFideId);
+console.log('Signature:', attestation.attestationData.s);
+```
+
+</Step>
+
+<Step>
+### Format for Publishing
+
+Finally, format the attestation for the [Fide Registry](/docs/broadcasting) format (JSONL).
+
+```ts title="index.ts"
+import { formatAttestationForJSONL } from '@fide.work/fcp';
+
+// ... (previous code)
+
+// 5. Format for Registry
+const jsonlLine = formatAttestationForJSONL(attestation, [statement]);
+
+console.log(JSON.stringify(jsonlLine, null, 0));
+```
+
+The output is a single line of JSON ready to be appended to a registry file.
+
+</Step>
+</Steps>
+
+## Next Steps
+
+- **[Building Statements](/docs/guides/building-statements)**: Learn how to map your data to Fide Entities.
+- **[Attesting & Batching](/docs/guides/attesting)**: Sign thousands of statements efficiently with Merkle trees.
+- **[Broadcasting](/docs/guides/broadcasting)**: Publish your attestations to a public registry.

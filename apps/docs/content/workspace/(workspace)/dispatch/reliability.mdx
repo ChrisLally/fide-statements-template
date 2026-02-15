@@ -1,0 +1,59 @@
+---
+title: Reliability
+description: Built-in fault tolerance for agent execution
+---
+
+The Dispatch system includes built-in reliability features to ensure agents complete their work.
+
+## Why Reliability Matters
+
+Agents can fail for many reasons:
+- API rate limits
+- Network issues
+- Model errors
+- Timeouts
+
+Without reliability, failed tasks are lost.
+
+## Automatic Retries
+
+Failed tasks are automatically retried with exponential backoff:
+
+1. **First retry** - 1 second delay
+2. **Second retry** - 2 seconds
+3. **Third retry** - 4 seconds
+4. And so on...
+
+This prevents overwhelming services while ensuring eventual completion.
+
+## State Persistence
+
+Workflow state is persisted across:
+- Server restarts
+- Deployments
+- Failures
+
+A workflow can pause, the server can restart, and it picks up where it left off.
+
+## Idempotent Execution
+
+Steps are designed to be safely re-run:
+- Same input → Same output
+- No duplicate side effects
+- Safe to retry
+
+## Error Handling
+
+When retries are exhausted:
+- Fallback steps can execute
+- Notifications are sent
+- Tasks are marked failed
+- Humans can intervene
+
+## Monitoring
+
+Track execution health:
+- Success/failure rates
+- Average execution time
+- Retry frequency
+- Error patterns

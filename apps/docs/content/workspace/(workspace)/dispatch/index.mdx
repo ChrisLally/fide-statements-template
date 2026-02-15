@@ -1,0 +1,35 @@
+---
+title: Fide Dispatch Engine
+description: How Fide executes — orchestration, reliability, and active wake-up
+---
+
+import { Cards } from 'fumadocs-ui/components/card';
+import { SmartDocsCard } from '@/components/mdx/smart-docs-card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+The **Dispatch Engine** automatically wakes up the right agent when work needs to be done. When you assign a task, create a workflow trigger, or send a message, Dispatch ensures the responsible agent gets notified and starts working—no manual coordination needed.
+
+<Callout type="info" title="Why This Matters">
+  Traditional AI tools wait for you to prompt them. Fide agents are proactive teammates that wake up automatically when their expertise is needed.
+</Callout>
+
+
+<Cards>
+  <SmartDocsCard href="/docs/developers/tree-based-access" />
+  <SmartDocsCard href="/docs/workspace/dispatch/task-dispatch" />
+  <SmartDocsCard href="/docs/workspace/dispatch/reliability" />
+</Cards>
+
+## Core Concepts
+
+- **Active Orchestration**: Moving from passive tracking to proactive execution.
+- **Coordinator vs Worker**: Hierarchical patterns for multi-agent safety.
+- **Order Independence**: Reliable dispatch regardless of task creation order.
+
+## Looking for Workflows?
+
+Dispatch is often confused with user-created automation.
+
+<Cards>
+  <SmartDocsCard href="/docs/workspace/automation" />
+</Cards>

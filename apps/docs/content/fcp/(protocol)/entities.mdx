@@ -1,0 +1,490 @@
+---
+title: Entities
+description: The strict types of actors and assets that the protocol describes.
+---
+
+import { Accordion, Accordions } from 'fumadocs-ui/components/accordion';
+import { Callout } from 'fumadocs-ui/components/callout';
+import { TypeTable } from 'fumadocs-ui/components/type-table';
+
+Entities are simply the **actors** and **assets** within the [**Fide Context Graph**](/docs/#context-graph).
+
+Every [**Active**](#active), [**Inactive**](#inactive), or [**Protocol**](#protocol) entity is identified by a [**Primary Fide ID**](/docs/identifiers) if it is the subject of any [Statement](/docs/schema#statement).
+
+---
+
+## Standard Alignment [#alignment]
+
+FCP is designed to be the "Universal Glue." Instead of proprietary types, we map FCP entities directly to established standard vocabularies.
+
+### Protocol Entities [#protocol]
+These entities form the "foundation" of the [**Fide Context Protocol (FCP)**](/docs/). They are the grammar we use to build sentences about the world.
+
+| FCP Entity Type | Standard Alignment | Implementation Notes |
+| :--- | :--- | :--- |
+| **[Statement](#statement)** | [`rdf:Statement`](https://www.w3.org/TR/rdf-schema/#ch_statement) | A specific, content-addressed Subject-Predicate-Object triple. |
+| **[Attestation](#attestation)** | [`verifiable:Credential`](https://www.w3.org/TR/vc-data-model/#credentials) | A cryptographic wrapper proving authorship over Statements. |
+| **[EvaluationMethod](#evaluation-method)** | [`prov:Plan`](https://www.w3.org/TR/prov-o/#Plan) | The algorithm, rubric, or logic used to generate a verdict. |
+
+### Active Entities [#active]
+Entities with **Agency**. They can sign statements, take actions, and own assets.
+
+| FCP Entity Type | Standard Alignment | Implementation Notes |
+| :--- | :--- | :--- |
+| **[Person](#person)** | [`schema:Person`](https://schema.org/Person) | Direct mapping. |
+| **[Organization](#organization)** | [`schema:Organization`](https://schema.org/Organization) | Direct mapping. |
+| **[AutonomousAgent](#autonomous-agent)** | [`prov:SoftwareAgent`](https://www.w3.org/TR/prov-o/#SoftwareAgent) | A running software instance with signing keys. |
+
+### Inactive Entities [#inactive]
+Entities that exist to be described, referenced, or acted upon.
+
+| FCP Entity Type | Standard Alignment | Implementation Notes |
+| :--- | :--- | :--- |
+| **[Place](#place)** | [`schema:Place`](https://schema.org/Place) | Direct mapping. |
+| **[Event](#event)** | [`schema:Event`](https://schema.org/Event) | Direct mapping. |
+| **[Product](#product)** | [`schema:Product`](https://schema.org/Product) | Tools, assets, or services. |
+| **[CreativeWork](#creative-work)** | [`schema:CreativeWork`](https://schema.org/CreativeWork) | Content, code, or concepts. |
+| **[CryptographicAccount](#cryptographic-account)** | [`sec:Key`](https://w3id.org/security#Key) | (W3C Security) Represents the Controller address of a `sec:Key` pair. |
+
+---
+
+# Protocol Entities [#protocol-defs]
+
+### Statement [#statement]
+The base unit of the protocol. A Statement is a content-addressed **Subject → Predicate → Object** triple defined in the [Statement Schema](/docs/schema#statement). All other protocol primitives (like Attestations) ultimately exist to publish, sign, and link Statements.
+
+<Accordions>
+<Accordion title="did:fide:0x0...">
+
+**Type**: `Statement` (`0`)
+**Source**: `0` (`Statement` - derived from canonical JSON hash)
+
+```typescript
+// Statement IDs are derived from the canonical JSON of the S-P-O triple (RFC 8785)
+import stringify from 'json-stable-stringify';
+
+const statementData = {
+  s: subjectFideId,
+  p: predicateFideId,
+  o: objectFideId
+};
+
+const rawIdentifier = stringify(statementData);
+const statementFideId = await calculateFideId('Statement', 'Statement', rawIdentifier);
+// → did:fide:0x00... (type '0' = Statement, identifier source '0' = Statement)
+```
+
+For the full Statement schema (including raw identifiers) see [Schema](/docs/schema#statement).
+
+**Primary Fide ID**: `did:fide:0x00...`
+
+<Callout type="info" title="Standard Alignment: rdf:Statement">
+Conceptually aligns with an [rdf:Statement](https://www.w3.org/TR/rdf-schema/#ch_statement) triple. In FCP, the Statement is reified as a first-class Entity.
+</Callout>
+
+</Accordion>
+</Accordions>
+
+### Attestation [#attestation]
+A signing event. When an actor signs a [Statement](/docs/schema#statement), they create an Attestation entity — the cryptographic wrapper that proves authorship. The Statement becomes a **Signed Statement** (see [Attesting](/docs/attesting)) when linked to an Attestation.
+
+<Callout type="info" title="SDK Implementation">
+The SDK provides `createAttestation()` and `verifyAttestation()` functions. See [Attestation & Batching](/docs/guides/attesting) in the SDK documentation for implementation examples.
+</Callout>
+
+<Accordions>
+<Accordion title="did:fide:0xa...">
+
+Every signature creates an [**Attestation entity**](/docs/entities#attestation).
+
+**Type**: `Attestation` (`a`)
+**Source**: `0` (`Statement` - derived from canonical JSON hash)
+
+```typescript
+// The rawIdentifier contains everything needed for verification
+// Use canonical JSON format (RFC 8785) with CAIP-10 signer
+import stringify from 'json-stable-stringify';
+
+const caip10User = `eip155:1:${signerAddress.toLowerCase()}`;
+const attestationData = {
+  m: signatureMethod,  // CAIP-122 method (e.g., "eip712")
+  u: caip10User,     // CAIP-10 user with chain context
+  r: merkleRoot,       // Merkle root commitment
+  s: signature         // Cryptographic signature
+};
+
+const rawIdentifier = stringify(attestationData);
+const attestationFideId = await calculateFideId('Attestation', 'Attestation', rawIdentifier);
+// → did:fide:0xaa... (type 'a' = Attestation, identifier source 'a' = Attestation)
+```
+
+The `caip10User` includes chain context, allowing indexers to distinguish signatures across different blockchains and preventing replay attacks.
+
+**Primary Fide ID**: `did:fide:0xaa...`
+
+<Callout type="info" title="Standard Alignment: verifiable:Credential">
+Serves the function of a [verifiable:Credential](https://www.w3.org/TR/vc-data-model/#credentials). It cryptographically proves authorship over a claim, though it uses a lightweight FCP schema optimized for high-throughput batching rather than the W3C VC JSON-LD format.
+</Callout>
+
+</Accordion>
+</Accordions>
+
+### EvaluationMethod [#evaluation-method]
+The methodology, algorithm, or service used to evaluate another entity. When an EvaluationMethod is used as the **predicate** in a statement, that statement becomes an evaluation.
+
+<Accordions>
+<Accordion title="did:fide:0xe...">
+
+[Calculated Fide IDs](/docs/identifiers#calculate) for EvaluationMethod (Algorithms, Models, APIs) entities can be identified by:
+
+| Concept | Identifier Source | Raw Identifier | Fide ID Prefix |
+| :--- | :--- | :--- | :--- |
+| **Protocol-Native** | `Statement` (`0`) | Genesis Statement Fide ID (`did:fide:0x00...`) | `did:fide:0xe0...` |
+| **API Endpoints** | `Product` (`5`) | `https://api.trust.score/v1` | `did:fide:0xe5...` |
+| **Named Algos** | `CreativeWork` (`6`) | `PageRank-2026` | `did:fide:0xe6...` |
+
+**Primary Fide ID**: `did:fide:0xe0...`
+
+<Callout type="info" title="Standard Alignment: prov:Plan">
+Aligns with a [PROV-O Plan](https://www.w3.org/TR/prov-o/#Plan) — the set of rules or recipe followed by an Agent to execute an Activity (the Evaluation).
+</Callout>
+
+</Accordion>
+</Accordions>
+
+For details on evaluation types, how to create methods, and how evaluations aggregate, see [**Evaluating**](/docs/evaluating).
+
+<Callout type="info" title="Philosophy: Statement vs. Fact">
+**Why isn't data called a 'Fact'?**
+
+Because in a distributed system, truth is relative.
+*   A **Statement** ("Alice says sky is green") is an objective record of speech. The protocol guarantees Alice said it.
+*   A **Fact** is a status *you* assign to a statement after you verify it.
+
+FCP records Statements. Your application upgrades them to Facts based on [Evaluations](/docs/evaluating).
+</Callout>
+
+---
+
+# Active Entities [#active-defs]
+
+### Person [#person]
+Natural human beings.
+
+<Accordions>
+<Accordion title="did:fide:0x1...">
+
+[Calculated Fide IDs](/docs/identifiers#calculate) for Person entities can be identified by:
+
+| Concept | Identifier Source | Raw Identifier | Fide ID Prefix |
+| :--- | :--- | :--- | :--- |
+| **Protocol-Native Primary** | `Statement` (`0`) | Genesis Statement Fide ID (`did:fide:0x00...`) | `did:fide:0x10...` |
+| **Platform** | `Product` (`5`) | `https://x.com/chrislally` | `did:fide:0x15...` |
+| **Self-Sovereign** | `CryptographicAccount` (`8`) | `0x1234...` (Wallet) | `did:fide:0x18...` |
+
+**Primary Fide ID**: `did:fide:0x10...`
+
+<Callout type="info" title="Standard Alignment: schema:Person">
+Directly maps to [schema:Person](https://schema.org/Person).
+</Callout>
+
+</Accordion>
+</Accordions>
+
+### Organization [#organization]
+Companies, teams, governments, or groups acting as a single unit.
+
+<Accordions>
+<Accordion title="did:fide:0x2...">
+
+[Calculated Fide IDs](/docs/identifiers#calculate) for Organization entities can be identified by:
+
+| Concept | Identifier Source | Raw Identifier | Fide ID Prefix |
+| :--- | :--- | :--- | :--- |
+| **Protocol-Native Primary** | `Statement` (`0`) | Genesis Statement Fide ID (`did:fide:0x00...`) | `did:fide:0x20...` |
+| **Platform** | `Product` (`5`) | `https://github.com/fide-project` | `did:fide:0x25...` |
+| **DAO/Protocol** | `CryptographicAccount` (`8`) | `0x123...` | `did:fide:0x28...` |
+
+**Recommended Pattern: Registered Companies** [#org-pattern]
+Use standard external identifiers (like DNS or Registry IDs) classified as **Product** identifiers.
+
+```typescript
+// Fide Project (The Organization)
+const fideId = await calculateFideId('Organization', 'Product', "https://github.com/fide-project");
+// → did:fide:0x25...
+```
+
+**Primary Fide ID**: `did:fide:0x20...`
+
+<Callout type="info" title="Standard Alignment: schema:Organization">
+Directly maps to [schema:Organization](https://schema.org/Organization).
+</Callout>
+
+</Accordion>
+</Accordions>
+
+<Callout type="info" title="Defining Groups: Lists vs. Queries">
+**How do I represent a group like 'Stanford Alumni 2022'?**
+
+You usually **don't** need a separate Entity for every group. FCP uses **Dynamic Queries**:
+1.  **Semantic Data**: Link entities with statements (`Alice → alumniOf → Stanford` + `startDate: 2022`).
+2.  **Query**: "Find all Persons where alumniOf=Stanford AND startDate=2022".
+
+Only create a distinct `Organization` entity if the group itself needs to **take action** (e.g., "The Alumni Association donates $1M").
+</Callout>
+
+### AutonomousAgent [#autonomous-agent]
+Self-acting software instances (bots, AI agents, workflows). Any software instance that holds a signing key and takes actions.
+
+<Accordions>
+<Accordion title="did:fide:0x7...">
+
+[Calculated Fide IDs](/docs/identifiers#calculate) for AutonomousAgent entities can be identified by:
+
+| Concept | Identifier Source | Raw Identifier | Fide ID Prefix |
+| :--- | :--- | :--- | :--- |
+| **Protocol-Native Primary** | `Statement` (`0`) | Genesis Statement Fide ID (`did:fide:0x00...`) | `did:fide:0x70...` |
+| **Hosted Service** | `Product` (`5`) | `https://agent.fide.io` | `did:fide:0x75...` |
+| **On-Chain Agent** | `CryptographicAccount` (`8`) | `0x123...` (Wallet) | `did:fide:0x78...` |
+
+**Primary Fide ID**: `did:fide:0x70...`
+
+<Callout type="info" title="Standard Alignment: prov:SoftwareAgent">
+Maps to [PROV-O SoftwareAgent](https://www.w3.org/TR/prov-o/#SoftwareAgent). This implies a running process that bears responsibility for an action, distinguished from static code (`schema:SoftwareApplication` / `CreativeWork`) by its ability to hold keys and sign as an `Active Entity`.
+</Callout>
+
+</Accordion>
+</Accordions>
+
+<Callout type="warning" title="Code vs. Running Instance">
+*   **Agent Code** (`CreativeWork`): The GitHub repo, the logic.
+*   **Agent Instance** (`AutonomousAgent`): The running process with a **signing key**.
+
+Think: Docker Image (`CreativeWork`) vs. Running Container (`AutonomousAgent`).
+</Callout>
+
+
+
+---
+
+# Inactive Entities [#inactive-defs]
+
+### Place [#place]
+Physical locations or spatial regions (Cities, Venues, Countries).
+
+<Accordions>
+<Accordion title="did:fide:0x3...">
+
+[Calculated Fide IDs](/docs/identifiers#calculate) for Place entities can be identified by:
+
+| Concept | Identifier Source | Raw Identifier | Fide ID Prefix |
+| :--- | :--- | :--- | :--- |
+| **Protocol-Native Primary** | `Statement` (`0`) | Genesis Statement Fide ID (`did:fide:0x00...`) | `did:fide:0x30...` |
+| **Coordinates** | `Product` (`5`) | `geo:37.77,-122.41` | `did:fide:0x35...` |
+| **Plus Code** | `Product` (`5`) | `plus:849VCWC8+R9` | `did:fide:0x35...` |
+| **Virtual Space** | `Product` (`5`) | `https://gather.town/...` | `did:fide:0x35...` |
+
+**Primary Fide ID**: `did:fide:0x30...`
+
+<Callout type="info" title="Standard Alignment: schema:Place">
+Directly maps to [schema:Place](https://schema.org/Place). Use latitude/longitude or Plus Codes as raw identifiers.
+</Callout>
+
+</Accordion>
+</Accordions>
+
+### Event [#event]
+Happenings with start/end times (Concerts, Meetings, Action Traces).
+
+<Accordions>
+<Accordion title="did:fide:0x4...">
+
+[Calculated Fide IDs](/docs/identifiers#calculate) for Event entities can be identified by:
+
+| Concept | Identifier Source | Raw Identifier | Fide ID Prefix |
+| :--- | :--- | :--- | :--- |
+| **Protocol-Native Primary** | `Statement` (`0`) | Genesis Statement Fide ID (`did:fide:0x00...`) | `did:fide:0x40...` |
+| **Public Event** | `Product` (`5`) | `https://eventbrite.com/...` | `did:fide:0x45...` |
+
+**Primary Fide ID**: `did:fide:0x40...`
+
+<Callout type="info" title="Standard Alignment: schema:Event">
+Directly maps to [schema:Event](https://schema.org/Event).
+</Callout>
+
+</Accordion>
+</Accordions>
+
+### Product [#product]
+Tools, software, physical goods, or assets defined by utility (SaaS Tools, Hardware).
+
+<Accordions>
+<Accordion title="did:fide:0x5...">
+
+[Calculated Fide IDs](/docs/identifiers#calculate) for Product entities can be identified by:
+
+| Concept | Identifier Source | Raw Identifier | Fide ID Prefix |
+| :--- | :--- | :--- | :--- |
+| **Protocol-Native Primary** | `Statement` (`0`) | Genesis Statement Fide ID (`did:fide:0x00...`) | `did:fide:0x50...` |
+| **Global Products** | `Product` (`5`) | `gtin:000123...` | `did:fide:0x55...` |
+| **Services** | `Product` (`5`) | `https://api.stripe.com` | `did:fide:0x55...` |
+
+**Primary Fide ID**: `did:fide:0x50...`
+
+<Callout type="info" title="Standard Alignment: schema:Product">
+Maps to [schema:Product](https://schema.org/Product) or Service. Represents utility, tools, and assets.
+</Callout>
+
+</Accordion>
+</Accordions>
+
+### CreativeWork [#creative-work]
+Concepts, documents, code repositories, media files, or **Protocol Statements**.
+
+<Accordions>
+<Accordion title="did:fide:0x6...">
+
+[Calculated Fide IDs](/docs/identifiers#calculate) for CreativeWork entities can be identified by:
+
+| Concept | Identifier Source | Raw Identifier | Fide ID Prefix |
+| :--- | :--- | :--- | :--- |
+| **Protocol-Native** | `Statement` (`0`) | Genesis Statement Fide ID (`did:fide:0x00...`) | `did:fide:0x60...` |
+| **Concepts** | `CreativeWork` (`6`) | `Software Engineering` | `did:fide:0x66...` |
+| **Books/Software** | `Product` (`5`) | `isbn:978...`, `pkg:npm/...` | `did:fide:0x65...` |
+| **Web Content** | `Product` (`5`) | `https://fide.io...` | `did:fide:0x65...` |
+
+**Recommended Pattern: Concepts & Predicates** [#concept-pattern]
+For abstract concepts or predicates where the *name is the thing*, use the name string itself.
+
+```typescript
+// The Concept "Software Engineering"
+// Type '6' (Work) + Source '6' (CreativeWork) = '66'
+const fideId = await calculateFideId('CreativeWork', 'CreativeWork', 'Software Engineering');
+// → did:fide:0x66...
+```
+
+**Primary Fide ID**: `did:fide:0x60...`
+
+<Callout type="info" title="Standard Alignment: schema:CreativeWork">
+Directly maps to [schema:CreativeWork](https://schema.org/CreativeWork). Represents content, code, concepts, and ideas.
+</Callout>
+
+</Accordion>
+</Accordions>
+
+<Callout type="info" title="Tie-Breaker: Product vs CreativeWork">
+**Product** (`5`) is for **Utility** (tools). **CreativeWork** (`6`) is for **Consumption** (content).
+
+*"If I replace it with a different version, is it the same entity?"*
+*   **Hammer Test (Product)**: Replacing one hammer with another = Same utility.
+*   **Book Test (CreativeWork)**: Replacing one book with another = Different content.
+</Callout>
+
+### CryptographicAccount [#cryptographic-account]
+An entity representing a cryptographic keypair (Account/Wallet). Distinct from the [Person](/docs/entities#person) or Agent controlling it.
+
+<Accordions>
+<Accordion title="did:fide:0x8...">
+
+[Calculated Fide IDs](/docs/identifiers#calculate) for CryptographicAccount entities can be identified by:
+
+| Concept | Identifier Source | Raw Identifier | Fide ID Prefix |
+| :--- | :--- | :--- | :--- |
+| **Protocol-Native** | `Statement` (`0`) | Genesis Statement Fide ID (`did:fide:0x00...`) | `did:fide:0x8...` |
+| **ENS** | `CreativeWork` (`6`) | `alice.eth` | `did:fide:0x8...` |
+| **Address** | `CryptographicAccount` (`8`) | `0x123...` or `8x...` | `did:fide:0x8...` |
+
+**Universal Identity** [#universal-identity]
+FCP intentionally **ignores the chain ID** in the identifier. We want reputation to **follow the key**.
+
+```typescript
+// Type '8' (Account) + Source '8' (CryptographicAccount) = '88'
+const fideId = await calculateFideId('CryptographicAccount', 'CryptographicAccount', '0xd8dA6...'); 
+// → did:fide:0x88...
+```
+
+**Controller Relationship** [#controller-relationship]
+Accounts can declare their controller (a [`Person`](/docs/entities#person) or `Organization`) using the `sec:controller` predicate, linking the `did:fide:0x88...` account to a `did:fide:0x18...` or `did:fide:0x28...` entity.
+
+**Primary Fide ID**: `did:fide:0x88...`
+
+<Callout type="info" title="Standard Alignment: sec:Key">
+Maps to a [Key](https://w3id.org/security#Key) in the W3C Security Vocabulary. It is the cryptographic material (subject) controlled by an Agent (controller).
+</Callout>
+
+</Accordion>
+</Accordions>
+
+---
+
+## Decision Tree [#decision-tree]
+
+import { Step, Steps } from 'fumadocs-ui/components/steps';
+
+<Steps>
+<Step>
+
+**Is it a natural human being?**
+
+Use [`Person`](#person).
+
+</Step>
+<Step>
+
+**Is it a company, team, government, or group?**
+
+Use [`Organization`](#organization).
+
+</Step>
+<Step>
+
+**Is it a physical location?**
+
+Use [`Place`](#place).
+
+</Step>
+<Step>
+
+**Is it a happening with start/end times?**
+
+Use [`Event`](#event).
+
+</Step>
+<Step>
+
+**Is it a cryptographic keypair?**
+
+Use [`CryptographicAccount`](#cryptographic-account).
+
+</Step>
+<Step>
+
+**Is it self-acting software with a key?**
+
+Use [`AutonomousAgent`](#autonomous-agent).
+
+</Step>
+<Step>
+
+**Is it a tool, good, or asset?**
+
+Use [`Product`](#product).
+
+</Step>
+<Step>
+
+**Is it a document, media file, or code?**
+
+Use [`CreativeWork`](#creative-work).
+
+</Step>
+</Steps>
+
+
+<Callout type="info" title="Identity Is Subjective">
+While FCP provides the IDs (`did:fide:0x...`), the **Fide Context Graph** allows you to decide what those IDs truly mean.
+
+**Two applications, same Fide ID = Different entity profiles.** This is by design. Your application [**resolves**](/docs/querying#resolve) the entity profile by choosing which indexers to trust and applying your own weighting models.
+
+👉 **[Read the full Entity Resolution guide](/docs/querying#resolve)**
+</Callout>
