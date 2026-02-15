@@ -56,6 +56,7 @@ jobs:
           mkdir -p "${outdir}"
           bundle="${outdir}/${stamp}-${short}.attestation.sigstore.json"
           rekor="${outdir}/${stamp}-${short}.attestation.rekor-v2.json"
+          cert_file="${outdir}/${stamp}-${short}.cert.pem"
 
           node -e "const fs=require('fs'); const p=process.env.ATTESTATION_FILE; const line=fs.readFileSync(p,'utf8').trim().split('\n')[0]; const a=JSON.parse(line); const pred={attestation:{m:a.m,u:a.u,r:a.r,s:a.s,t:a.t},source:{path:p}}; fs.writeFileSync('predicate.json', JSON.stringify(pred));"
 
@@ -65,16 +66,21 @@ jobs:
             --predicate predicate.json \
             --type "${FCP_PREDICATE_TYPE}" \
             --bundle "${bundle}" \
+            --output-certificate "${cert_file}" \
             "${ATTESTATION_FILE}"
 
-          ENVELOPE_JSON="$(jq -c '.dsseEnvelope' "${bundle}")"
-          CERT_B64="$(jq -r '.verificationMaterial.certificate.rawBytes' "${bundle}")"
+          if jq -e '.dsseEnvelope' "${bundle}" >/dev/null 2>&1; then
+            ENVELOPE_JSON="$(jq -c '.dsseEnvelope' "${bundle}")"
+          else
+            ENVELOPE_JSON="$(jq -c '.' "${bundle}")"
+          fi
+          CERT_B64="$(openssl x509 -in "${cert_file}" -outform DER | base64 -w0)"
           if [ -z "${ENVELOPE_JSON}" ] || [ "${ENVELOPE_JSON}" = "null" ]; then
             echo "Missing dsseEnvelope in bundle"
             exit 1
           fi
           if [ -z "${CERT_B64}" ] || [ "${CERT_B64}" = "null" ]; then
-            echo "Missing certificate.rawBytes in bundle"
+            echo "Missing certificate bytes"
             exit 1
           fi
 
@@ -86,7 +92,8 @@ jobs:
                 {
                   "x509Certificate": {
                     "rawBytes": "${CERT_B64}"
-                  }
+                  },
+                  "keyDetails": "PKIX_ECDSA_P256_SHA_256"
                 }
               ]
             }
