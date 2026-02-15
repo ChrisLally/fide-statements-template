@@ -1,10 +1,11 @@
 /**
  * Seed test statements for FCP
  *
- * Uses @fide.work/fcp: buildStatementBatch, createAttestation, formatAttestationForJSONL,
- * generateRegistryPath, generateJSONLFilename, Ed25519 signing.
+ * Uses @fide.work/fcp: buildStatementBatch, createAttestation, Ed25519 signing.
  *
- * Output: .fide/attestations/YYYY/MM/DD/YYYY-MM-DD-HHmm-1.jsonl
+ * Output:
+ * - .fide/statements/YYYY/MM/DD/{merkleRoot}.jsonl
+ * - .fide/statement-attestations/YYYY/MM/DD/{YYYY-MM-DD-HHmm}-{attestationShortId}.jsonl
  *
  * Usage: pnpm seed
  */
@@ -19,9 +20,6 @@ import {
   buildStatementBatch,
   createStatement,
   createAttestation,
-  formatAttestationForJSONL,
-  generateRegistryPath,
-  generateJSONLFilename,
   generateEd25519KeyPair,
   exportEd25519Keys,
   importEd25519Keys,
@@ -37,8 +35,36 @@ const ATTESTOR_ROOT = dirname(
   dirname(dirname(fileURLToPath(import.meta.url)))
 );
 
-const ATTESTATIONS_PATH =
-  process.env.FCP_ATTESTATIONS_PATH ?? join(ATTESTOR_ROOT, ".fide", "attestations");
+const FIDE_ROOT = join(ATTESTOR_ROOT, ".fide");
+const STATEMENTS_PATH =
+  process.env.FCP_STATEMENTS_PATH ?? join(FIDE_ROOT, "statements");
+const STATEMENT_ATTESTATIONS_PATH =
+  process.env.FCP_STATEMENT_ATTESTATIONS_PATH ??
+  process.env.FCP_ATTESTATIONS_PATH ??
+  join(FIDE_ROOT, "statement-attestations");
+const REKOR_PROOFS_PATH =
+  process.env.FCP_REKOR_PROOFS_PATH ?? join(FIDE_ROOT, "rekor-proofs");
+
+function getUTCDatePartition(date: Date): string {
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  return `${year}/${month}/${day}`;
+}
+
+function getUTCMinuteStamp(date: Date): string {
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  const hours = String(date.getUTCHours()).padStart(2, "0");
+  const minutes = String(date.getUTCMinutes()).padStart(2, "0");
+  return `${year}-${month}-${day}-${hours}${minutes}`;
+}
+
+function getAttestationShortId(attestationFideId: string): string {
+  const hex = attestationFideId.replace(/^did:fide:0x/, "");
+  return hex.slice(0, 12);
+}
 
 /** Evaluation method GitHub URLs → method names (0xe5 Product-sourced) */
 const EVALUATION_METHODS = new Map<string, string>([
@@ -283,20 +309,48 @@ async function main() {
 
   console.log(`✓ Attestation created (${attestation.attestationFideId.slice(0, 20)}...)`);
 
-  // 4. Format for JSONL and write
+  // 4. Format outputs and write
   const signedAt = new Date().toISOString();
-  const jsonlAttestation = formatAttestationForJSONL(attestation, statements, signedAt);
-
   const now = new Date();
-  const registryPath = generateRegistryPath(now);
-  const filename = generateJSONLFilename(now, 1);
-  const outputDir = join(ATTESTATIONS_PATH, registryPath);
-  const outputPath = join(outputDir, filename);
+  const datePartition = getUTCDatePartition(now);
+  const statementLines = statements
+    .map((s) =>
+      JSON.stringify({
+        s: s.subjectFideId,
+        sr: s.subjectRawIdentifier,
+        p: s.predicateFideId,
+        pr: s.predicateRawIdentifier,
+        o: s.objectFideId,
+        or: s.objectRawIdentifier,
+      })
+    )
+    .join("\n");
 
-  await mkdir(outputDir, { recursive: true });
-  await writeFile(outputPath, JSON.stringify(jsonlAttestation) + "\n", "utf-8");
+  const statementsDir = join(STATEMENTS_PATH, datePartition);
+  const statementsPath = join(statementsDir, `${attestation.merkleRoot}.jsonl`);
+  await mkdir(statementsDir, { recursive: true });
+  await writeFile(statementsPath, `${statementLines}\n`, "utf-8");
 
-  console.log(`✓ Wrote ${outputPath}`);
+  const attestationLine = JSON.stringify({
+    m: attestation.attestationData.m,
+    u: attestation.attestationData.u,
+    r: attestation.merkleRoot,
+    s: attestation.attestationData.s,
+    t: signedAt,
+  });
+
+  const attestationDir = join(STATEMENT_ATTESTATIONS_PATH, datePartition);
+  const attestationFilename = `${getUTCMinuteStamp(now)}-${getAttestationShortId(
+    attestation.attestationFideId
+  )}.jsonl`;
+  const attestationPath = join(attestationDir, attestationFilename);
+  await mkdir(attestationDir, { recursive: true });
+  await writeFile(attestationPath, `${attestationLine}\n`, "utf-8");
+
+  await mkdir(join(REKOR_PROOFS_PATH, datePartition), { recursive: true });
+
+  console.log(`✓ Wrote statements: ${statementsPath}`);
+  console.log(`✓ Wrote statement attestation: ${attestationPath}`);
 
   // Evaluation method Fide IDs (0xe5 Product-sourced)
   console.log("\n📋 Evaluation methods (0xe5):");

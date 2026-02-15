@@ -1,7 +1,7 @@
 /**
  * Index FCP attestations
  *
- * 1. Ingest from demos/fide-attestor-template/.fide/attestations/ (or FCP_ATTESTATIONS_PATH)
+ * 1. Ingest from packages/fcp/demos/fide-attestor-template/.fide/statement-attestations/ (or FCP_ATTESTATIONS_PATH)
  * 2. Verify using @fide.work/fcp (buildMerkleTree, verifyAttestation)
  * 3. Materialize to Postgres (placeholder - needs port from legacy)
  *
@@ -24,7 +24,6 @@ import {
   verifyAttestation,
   extractFideIdFingerprint,
   extractFideIdTypeAndSource,
-  type JSONLAttestation,
   type AttestationData,
 } from "@fide.work/fcp";
 
@@ -32,7 +31,32 @@ loadDemoEnv();
 
 const ATTESTATIONS_PATH =
   process.env.FCP_ATTESTATIONS_PATH ??
-  "demos/fide-attestor-template/.fide/attestations";
+  "packages/fcp/demos/fide-attestor-template/.fide/statement-attestations";
+const STATEMENTS_PATH =
+  process.env.FCP_STATEMENTS_PATH ??
+  "packages/fcp/demos/fide-attestor-template/.fide/statements";
+
+interface IndexedStatement {
+  s: string;
+  sr: string;
+  p: string;
+  pr: string;
+  o: string;
+  or: string;
+}
+
+interface JSONLStatementAttestation {
+  m: string;
+  u: string;
+  r: string;
+  s: string;
+  t: string;
+}
+
+interface HydratedAttestation {
+  attestation: JSONLStatementAttestation;
+  statements: IndexedStatement[];
+}
 
 /** Find monorepo root (contains pnpm-workspace.yaml) */
 function findRepoRoot(): string {
@@ -70,7 +94,7 @@ async function toStatementFideId(stmt: {
   return await calculateStatementFideId(stmt.s, stmt.p, stmt.o);
 }
 
-async function ingestAttestations(): Promise<JSONLAttestation[]> {
+async function ingestAttestations(): Promise<JSONLStatementAttestation[]> {
   const repoRoot = findRepoRoot();
   const basePath = join(repoRoot, ATTESTATIONS_PATH);
   const filePaths: string[] = [];
@@ -105,18 +129,67 @@ async function ingestAttestations(): Promise<JSONLAttestation[]> {
   const latestPath = filePaths[filePaths.length - 1]!;
   console.log(`📄 Only indexing latest attestation: ${latestPath}`);
 
-  const attestations: JSONLAttestation[] = [];
+  const attestations: JSONLStatementAttestation[] = [];
   const content = await readFile(latestPath, "utf-8");
   for (const line of content.trim().split("\n")) {
     if (!line) continue;
     try {
-      attestations.push(JSON.parse(line) as JSONLAttestation);
+      attestations.push(JSON.parse(line) as JSONLStatementAttestation);
     } catch {
       // skip malformed lines
     }
   }
 
   return attestations;
+}
+
+async function loadStatementsByMerkleRoot(
+  merkleRoot: string
+): Promise<IndexedStatement[] | null> {
+  const repoRoot = findRepoRoot();
+  const basePath = join(repoRoot, STATEMENTS_PATH);
+  const filePaths: string[] = [];
+
+  async function walk(dir: string) {
+    let entries: Dirent[];
+    try {
+      entries = (await readdir(dir, { withFileTypes: true })) as Dirent[];
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+        return;
+      }
+      throw err;
+    }
+
+    for (const ent of entries) {
+      const full = join(dir, ent.name);
+      if (ent.isDirectory()) {
+        await walk(full);
+      } else if (ent.isFile() && ent.name === `${merkleRoot}.jsonl`) {
+        filePaths.push(full);
+      }
+    }
+  }
+
+  await walk(basePath);
+  if (filePaths.length === 0) return null;
+
+  // If multiple matches exist, use the latest lexicographic path.
+  filePaths.sort();
+  const latestPath = filePaths[filePaths.length - 1]!;
+  const content = await readFile(latestPath, "utf-8");
+
+  const statements: IndexedStatement[] = [];
+  for (const line of content.trim().split("\n")) {
+    if (!line) continue;
+    try {
+      statements.push(JSON.parse(line) as IndexedStatement);
+    } catch {
+      // skip malformed lines
+    }
+  }
+
+  return statements;
 }
 
 async function main() {
@@ -134,13 +207,20 @@ async function main() {
 
   let verified = 0;
   let failed = 0;
-  const verifiedAttestations: JSONLAttestation[] = [];
+  const verifiedAttestations: HydratedAttestation[] = [];
 
   for (const jsonl of attestations) {
     try {
+      const statements = await loadStatementsByMerkleRoot(jsonl.r);
+      if (!statements || statements.length === 0) {
+        console.warn(`⚠ Missing statements file for merkle root ${jsonl.r}`);
+        failed++;
+        continue;
+      }
+
       // Rebuild statement Fide IDs from JSONL
       const statementFideIds = await Promise.all(
-        jsonl.d.map((stmt) => toStatementFideId(stmt))
+        statements.map((stmt) => toStatementFideId(stmt))
       );
 
       // Rebuild Merkle tree to get proofs
@@ -190,7 +270,7 @@ async function main() {
       }
 
       verified++;
-      verifiedAttestations.push(jsonl);
+      verifiedAttestations.push({ attestation: jsonl, statements });
     } catch (err) {
       console.warn("⚠ Error processing attestation:", err);
       failed++;
@@ -206,8 +286,8 @@ async function main() {
     try {
       let stmtCount = 0;
 
-      for (const jsonl of verifiedAttestations) {
-        for (const s of jsonl.d) {
+      for (const hydrated of verifiedAttestations) {
+        for (const s of hydrated.statements) {
           const subjFp = extractFideIdFingerprint(s.s);
           const subjType = extractFideIdTypeAndSource(s.s);
           const predFp = extractFideIdFingerprint(s.p);

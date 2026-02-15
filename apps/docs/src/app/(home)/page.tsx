@@ -260,7 +260,7 @@ export default function HomePage() {
             Build trusted human-AI systems with Fide Graph (memory), Fide Gateway (routing and access), and FCP (protocol).
           </p>
         </div>
-
+{/* 
         <Card className="gap-2 py-4">
           <CardHeader className="gap-1">
             <CardTitle className="flex items-center gap-2 text-2xl">
@@ -293,7 +293,7 @@ export default function HomePage() {
               <ArrowRight className="size-4" />
             </Button>
           </CardContent>
-        </Card>
+        </Card> */}
       </section>
 
       <Separator />
