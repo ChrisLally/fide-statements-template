@@ -251,14 +251,10 @@ jobs:
               --arg repo "${{ github.repository }}" \
               --arg sha "${{ github.sha }}" \
               --arg runId "${{ github.run_id }}" \
-              --arg attestationFile "${ATTESTATION_FILE}" \
               --arg attestationM "${attestation_m}" \
               --arg attestationU "${attestation_u}" \
               --arg attestationR "${attestation_r}" \
               --arg attestationS "${attestation_s}" \
-              --arg rekorFile "${rekor}" \
-              --arg bundleFile "${bundle}" \
-              --arg tsaFile "${tsa}" \
               --arg tsaTokenB64 "$(base64 -w0 "${tsa}")" \
               --argjson rekorResponse "$(cat "${rekor}")" \
               '{
@@ -268,21 +264,21 @@ jobs:
                 items: [
                   {
                     attestation: {
-                      file: $attestationFile,
                       m: $attestationM,
                       u: $attestationU,
                       r: $attestationR,
                       s: $attestationS
                     },
                     rekor: {
-                      file: $rekorFile,
-                      response: $rekorResponse
-                    },
-                    bundle: {
-                      file: $bundleFile
+                      logIndex: ($rekorResponse.logIndex // null),
+                      logId: ($rekorResponse.logId.keyId // null),
+                      inclusionProof: {
+                        logIndex: ($rekorResponse.inclusionProof.logIndex // null),
+                        treeSize: ($rekorResponse.inclusionProof.treeSize // null),
+                        checkpointEnvelope: ($rekorResponse.inclusionProof.checkpoint.envelope // null)
+                      }
                     },
                     tsa: {
-                      file: $tsaFile,
                       tokenB64: $tsaTokenB64
                     }
                   }
