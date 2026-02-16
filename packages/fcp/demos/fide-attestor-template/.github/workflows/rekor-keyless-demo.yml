@@ -63,11 +63,22 @@ jobs:
 
           node -e "const fs=require('fs'); const p=process.env.ATTESTATION_FILE; const line=fs.readFileSync(p,'utf8').trim().split('\n')[0]; const a=JSON.parse(line); const pred={attestation:{m:a.m,u:a.u,r:a.r,s:a.s,t:a.t},source:{path:p}}; fs.writeFileSync('predicate.json', JSON.stringify(pred));"
 
+          tsa_flag=""
+          if cosign attest-blob --help | grep -q -- "--rfc3161-timestamp-bundle"; then
+            tsa_flag="--rfc3161-timestamp-bundle"
+          elif cosign attest-blob --help | grep -q -- "--rfc3161-timestamp"; then
+            tsa_flag="--rfc3161-timestamp"
+          else
+            echo "No supported RFC3161 timestamp output flag found in this cosign version"
+            cosign version || true
+            exit 1
+          fi
+
           cosign attest-blob \
             --yes \
             --tlog-upload=false \
             --timestamp-server-url "${TSA_URL}" \
-            --rfc3161-timestamp "${tsa}" \
+            "${tsa_flag}" "${tsa}" \
             --predicate predicate.json \
             --type "${FCP_PREDICATE_TYPE}" \
             --bundle "${bundle}" \
