@@ -362,6 +362,22 @@ importers:
 
   packages/fcp/packages/typescript-config: {}
 
+  packages/graph:
+    dependencies:
+      '@fide.work/db':
+        specifier: workspace:*
+        version: link:../db
+      '@fide.work/fcp':
+        specifier: workspace:*
+        version: link:../fcp/packages/fcp-js
+    devDependencies:
+      '@types/node':
+        specifier: ^20.11.17
+        version: 20.19.33
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
+
   packages/typescript-config: {}
 
 packages:
