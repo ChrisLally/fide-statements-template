@@ -78,7 +78,9 @@ export interface StatementBatchWithRoot {
  * Predicates must be canonical full URLs.
  *
  * @param input - Statement input with subject, predicate, and object
+ * @paramDefault input { subject: { rawIdentifier: "https://x.com/alice", entityType: "Person", sourceType: "Product" }, predicate: { rawIdentifier: "https://schema.org/name", entityType: "CreativeWork", sourceType: "Product" }, object: { rawIdentifier: "Alice", entityType: "CreativeWork", sourceType: "CreativeWork" } }
  * @returns Complete statement object
+ * @throws Error if statement input policy fails, Fide ID format/policy checks fail, or statement ID derivation fails
  *
  * @example
  * ```ts
@@ -141,6 +143,27 @@ export async function createStatement(input: StatementInput): Promise<Statement>
  *
  * This is a convenience wrapper around `createStatement` for callers that prefer
  * positional arguments over a nested input object.
+ *
+ * @param subjectRawIdentifier Subject raw identifier.
+ * @param subjectEntityType Subject entity type.
+ * @param subjectSourceType Subject source entity type.
+ * @param predicateRawIdentifier Predicate raw identifier (canonical URL).
+ * @param predicateEntityType Predicate entity type.
+ * @param predicateSourceType Predicate source entity type.
+ * @param objectRawIdentifier Object raw identifier.
+ * @param objectEntityType Object entity type.
+ * @param objectSourceType Object source entity type.
+ * @paramDefault subjectRawIdentifier https://x.com/alice
+ * @paramDefault subjectEntityType Person
+ * @paramDefault subjectSourceType Product
+ * @paramDefault predicateRawIdentifier https://schema.org/name
+ * @paramDefault predicateEntityType CreativeWork
+ * @paramDefault predicateSourceType Product
+ * @paramDefault objectRawIdentifier Alice
+ * @paramDefault objectEntityType CreativeWork
+ * @paramDefault objectSourceType CreativeWork
+ * @returns Complete statement object
+ * @throws Error if statement input policy fails, Fide ID format/policy checks fail, or statement ID derivation fails
  */
 export async function createStatementFromParts(
     subjectRawIdentifier: string,
@@ -176,12 +199,15 @@ export async function createStatementFromParts(
  * Build a batch of statements and derive a deterministic batch root.
  *
  * Root derivation:
- * - Ordered `statementFideIds` are joined with `\\n`
+ * - `statementFideIds` are lexicographically sorted
+ * - Sorted IDs are joined with `\\n`
  * - SHA-256 is computed over that byte sequence
  * - Result is returned as lowercase hex string
  *
- * @param inputs Array of statement inputs
- * @returns Statements, ordered statement IDs, and deterministic root hash
+ * @param inputs Array of statement inputs.
+ * @paramDefault inputs [{ subject: { rawIdentifier: "https://x.com/alice", entityType: "Person", sourceType: "Product" }, predicate: { rawIdentifier: "https://schema.org/name", entityType: "CreativeWork", sourceType: "Product" }, object: { rawIdentifier: "Alice", entityType: "CreativeWork", sourceType: "CreativeWork" } }]
+ * @returns Statements, statement IDs (input order), and deterministic root hash
+ * @throws Error if one or more built statements are missing `statementFideId`
  */
 export async function buildStatementBatchWithRoot(inputs: StatementInput[]): Promise<StatementBatchWithRoot> {
     const statements = await Promise.all(inputs.map((input) => createStatement(input)));
@@ -193,7 +219,8 @@ export async function buildStatementBatchWithRoot(inputs: StatementInput[]): Pro
         throw new Error("Batch build failed: one or more statements are missing statementFideId.");
     }
 
-    const root = createHash("sha256").update(statementFideIds.join("\n")).digest("hex");
+    const canonicalIds = [...statementFideIds].sort();
+    const root = createHash("sha256").update(canonicalIds.join("\n")).digest("hex");
 
     return {
         statements,

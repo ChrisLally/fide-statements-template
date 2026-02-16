@@ -19,6 +19,7 @@ import type { FideId, FideFingerprint, ParsedFideId, FideEntityType, FideEntityT
  * @param value The Fide ID reference (format: did:fide:0x... or 0x...)
  * @paramDefault value did:fide:0x152f02f1d1c1e62b2e569e11818420c1968be3d9
  * @returns true if valid Fide ID format, false otherwise
+ * @throws Never throws. Returns `false` for invalid input.
  */
 export function isValidFideId(value: string): value is FideId {
     if (typeof value !== "string") return false;
@@ -122,6 +123,7 @@ export function parseFideId(fideId: string): ParsedFideId {
  * @paramDefault predicateFideId did:fide:0x6524b049fa7069dd318c44531214a955c3f1fa37
  * @paramDefault objectFideId did:fide:0x66a023246354ad7e064b1e4e009ec8a0699a3043
  * @returns Normalized JSON string with keys in fixed alphabetical order: `{"o":"...","p":"...","s":"..."}`
+ * @throws Never throws. Input types are compile-time constrained to `FideId`.
  * @remarks The key order (o, p, s) is critical for deterministic hashing. Do not reorder keys as this will produce different Fide IDs.
  */
 export function getStatementRawIdentifier(
