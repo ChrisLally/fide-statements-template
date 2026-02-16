@@ -241,6 +241,18 @@ jobs:
             cp "${bundle}" ".fide/rekor-proofs/latest.attestation.sigstore.json"
             cp "${tsa}" ".fide/rekor-proofs/latest.attestation.rfc3161.tsr"
 
+            tsa_der_file="${tmpdir}/tsa.der"
+            if jq -e '.SignedRFC3161Timestamp' "${tsa}" >/dev/null 2>&1; then
+              jq -r '.SignedRFC3161Timestamp' "${tsa}" | base64 -d > "${tsa_der_file}"
+            else
+              cp "${tsa}" "${tsa_der_file}"
+            fi
+
+            tsa_gen_time="$(openssl ts -reply -in "${tsa_der_file}" -text 2>/dev/null | awk -F': ' '/Time stamp:/ {print $2; exit}' || true)"
+            if [ -z "${tsa_gen_time}" ]; then
+              tsa_gen_time="unknown"
+            fi
+
             attestation_json="$(cat "${ATTESTATION_FILE}")"
             attestation_m="$(jq -r '.m // empty' <<<"${attestation_json}")"
             attestation_u="$(jq -r '.u // empty' <<<"${attestation_json}")"
@@ -255,6 +267,7 @@ jobs:
               --arg attestationU "${attestation_u}" \
               --arg attestationR "${attestation_r}" \
               --arg attestationS "${attestation_s}" \
+              --arg tsaGenTime "${tsa_gen_time}" \
               --arg tsaTokenB64 "$(base64 -w0 "${tsa}")" \
               --argjson rekorResponse "$(cat "${rekor}")" \
               '{
@@ -279,6 +292,7 @@ jobs:
                       }
                     },
                     tsa: {
+                      genTime: $tsaGenTime,
                       tokenB64: $tsaTokenB64
                     }
                   }
