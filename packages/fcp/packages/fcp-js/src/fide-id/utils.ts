@@ -110,39 +110,6 @@ export function parseFideId(fideId: string): ParsedFideId {
 }
 
 /**
- * Validate a Fide ID for use in a statement (subject, predicate, or object).
- *
- * Subject/Object: Statement source (0xX0) is only allowed for Statement (0x00) and Attestation (0xaa).
- * Predicate: Only 0x65 (CreativeWork+Product) allowed.
- *
- * @param fideId The Fide ID to validate
- * @param role Role label for validation ("subject", "object", "predicate")
- * @throws Error if the Fide ID violates protocol constraints
- */
-export function validateFideIdForStorage(fideId: string, role: "subject" | "object" | "predicate"): void {
-    const { typeChar, sourceChar } = extractFideIdTypeAndSource(fideId);
-
-    if (role === "predicate") {
-        const valid = typeChar === "6" && sourceChar === "5";
-        if (!valid) {
-            throw new Error(
-                `Invalid predicate Fide ID: ${fideId}. Predicates must use 0x65 (CreativeWork+Product) only.`
-            );
-        }
-        return;
-    }
-
-    if (sourceChar !== "0") return; // Non-Statement source is always allowed for subject/object
-    if (typeChar === "0" || typeChar === "a") return; // 0x00 and 0xaa are allowed
-    const label = role ? ` ${role}` : "";
-    throw new Error(
-        `Invalid Fide ID for statement${label}: ${fideId}. ` +
-        `Protocol disallows Statement source (0xX0) for non-Statement/non-Attestation entities. ` +
-        `Use a concrete source (e.g. Product 0x15, Organization 0x25) instead of Statement (0x10, 0x20, etc.).`
-    );
-}
-
-/**
  * Get the normalized JSON string for a statement's raw identifier.
  *
  * Generates a deterministic JSON representation of an RDF triple with keys in alphabetical order.

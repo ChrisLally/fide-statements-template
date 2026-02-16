@@ -11,20 +11,17 @@
 export const FIDE_ENTITY_TYPE_MAP = {
     // Fide Context Protocol Types
     Statement: "0",
-    Attestation: "a",
-    EvaluationMethod: "e",
 
-    // Active Entities (can sign Attestations)
+    // Active Entities
     Person: "1",
     Organization: "2",
     AutonomousAgent: "7",
 
-    // Inactive Entities (do not sign Attestations)
+    // Inactive Entities
     Place: "3",
     Event: "4",
     Product: "5",
-    CreativeWork: "6",
-    CryptographicAccount: "8" // USED to sign Attestations, but not the entity signing
+    CreativeWork: "6"
 } as const;
 
 /**
@@ -32,16 +29,13 @@ export const FIDE_ENTITY_TYPE_MAP = {
  */
 export const FIDE_CHAR_TO_ENTITY_TYPE: Record<string, keyof typeof FIDE_ENTITY_TYPE_MAP> = {
     "0": "Statement",
-    "a": "Attestation",
-    "e": "EvaluationMethod",
     "1": "Person",
     "2": "Organization",
     "7": "AutonomousAgent",
     "3": "Place",
     "4": "Event",
     "5": "Product",
-    "6": "CreativeWork",
-    "8": "CryptographicAccount"
+    "6": "CreativeWork"
 };
 
 /**

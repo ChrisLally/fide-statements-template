@@ -6,6 +6,7 @@
 
 export {
     createStatement,
+    createStatementFromParts,
     buildStatementBatch,
     type StatementInput,
     type Statement

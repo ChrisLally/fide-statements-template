@@ -42,18 +42,15 @@ export async function calculateFideId(
     throw new TypeError(`Invalid rawIdentifier: expected string, got ${typeof rawIdentifier}`);
   }
 
-  if (
-    (entityType === "Statement" && sourceEntityType !== "Statement") ||
-    (entityType === "Attestation" && sourceEntityType !== "Attestation")
-  ) {
+  if (entityType === "Statement" && sourceEntityType !== "Statement") {
     throw new Error(
       `Protocol entity ${entityType} must be self-sourced. Expected source type: ${entityType}, got: ${sourceEntityType}`
     );
   }
 
-  if (sourceEntityType === "Statement" && entityType !== "Statement" && entityType !== "Attestation") {
+  if (sourceEntityType === "Statement" && entityType !== "Statement") {
     throw new Error(
-      `Invalid Statement source for ${entityType}: protocol disallows 0xX0 (Statement-derived) IDs for non-Statement/non-Attestation entities. Use a concrete source (e.g. Product, Organization) instead.`
+      `Invalid Statement source for ${entityType}: protocol disallows 0xX0 (Statement-derived) IDs for non-Statement entities. Use a concrete source (e.g. Product, Organization) instead.`
     );
   }
 

@@ -14,7 +14,6 @@ export {
     extractFideIdFingerprint,
     extractFideIdTypeAndSource,
     parseFideId,
-    validateFideIdForStorage,
     getStatementRawIdentifier
 } from "./utils.js";
 

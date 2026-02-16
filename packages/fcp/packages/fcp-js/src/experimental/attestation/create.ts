@@ -142,8 +142,8 @@ export async function createAttestation(
         u: attestationData.u
     });
 
-    // 5. Derive Attestation Fide ID
-    const attestationFideId = await calculateFideId('Attestation', 'Attestation', rawIdentifier);
+    // 5. Derive attestation-like ID with fixed 0xaa prefix.
+    const attestationFideId = await calculateAaPrefixedId(rawIdentifier);
 
     return {
         attestationFideId,
@@ -275,6 +275,16 @@ export async function verifyAttestationFideId(
     attestationFideId: string,
     rawIdentifier: string
 ): Promise<boolean> {
-    const expectedId = await calculateFideId('Attestation', 'Attestation', rawIdentifier);
+    const expectedId = await calculateAaPrefixedId(rawIdentifier);
     return attestationFideId.toLowerCase() === expectedId.toLowerCase();
+}
+
+async function calculateAaPrefixedId(rawIdentifier: string): Promise<FideId> {
+    const bytes = new TextEncoder().encode(rawIdentifier);
+    const subtle = globalThis.crypto?.subtle ?? (await import("node:crypto")).webcrypto.subtle;
+    const digest = await subtle.digest("SHA-256", bytes);
+    const hashHex = Array.from(new Uint8Array(digest))
+        .map((byte) => byte.toString(16).padStart(2, "0"))
+        .join("");
+    return `did:fide:0xaa${hashHex.slice(-38)}` as FideId;
 }

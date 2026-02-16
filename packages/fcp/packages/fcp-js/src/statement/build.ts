@@ -6,10 +6,10 @@
 
 import {
     calculateFideId,
-    calculateStatementFideId,
-    validateFideIdForStorage
+    calculateStatementFideId
 } from "../fide-id/index.js";
 import type { FideId, FideEntityType, FideStatementPredicateEntityType } from "../fide-id/types.js";
+import { assertStatementFideIdsPolicy, assertStatementInputPolicy } from "./policy.js";
 
 /**
  * Input for creating a statement.
@@ -79,6 +79,8 @@ export interface Statement {
  * ```
  */
 export async function createStatement(input: StatementInput): Promise<Statement> {
+    assertStatementInputPolicy(input);
+
     const subjectFideId = await calculateFideId(
         input.subject.entityType,
         input.subject.sourceType,
@@ -89,18 +91,7 @@ export async function createStatement(input: StatementInput): Promise<Statement>
     let predicateFideId: FideId;
     let predicateRawIdentifier: string;
 
-    if (input.predicate.entityType !== "CreativeWork") {
-        throw new Error(
-            `Invalid predicate entityType: ${input.predicate.entityType}. Expected CreativeWork.`
-        );
-    }
-
     predicateRawIdentifier = input.predicate.rawIdentifier;
-    if (!predicateRawIdentifier.includes("://")) {
-        throw new Error(
-            `Invalid predicate rawIdentifier: ${predicateRawIdentifier}. Expected canonical full URL (e.g. https://schema.org/name).`
-        );
-    }
     predicateFideId = await calculateFideId(
         input.predicate.entityType,
         input.predicate.sourceType,
@@ -114,10 +105,7 @@ export async function createStatement(input: StatementInput): Promise<Statement>
     );
     const objectRawIdentifier = input.object.rawIdentifier;
 
-    // Enforce protocol rule: no 0xX0 except 0x00 and 0xaa in statement components
-    validateFideIdForStorage(subjectFideId, "subject");
-    validateFideIdForStorage(predicateFideId, "predicate");
-    validateFideIdForStorage(objectFideId, "object");
+    assertStatementFideIdsPolicy(subjectFideId, predicateFideId, objectFideId);
 
     // Calculate statement Fide ID
     const statementFideId = await calculateStatementFideId(
@@ -135,6 +123,42 @@ export async function createStatement(input: StatementInput): Promise<Statement>
         objectRawIdentifier,
         statementFideId
     };
+}
+
+/**
+ * Create a statement using positional part fields.
+ *
+ * This is a convenience wrapper around `createStatement` for callers that prefer
+ * positional arguments over a nested input object.
+ */
+export async function createStatementFromParts(
+    subjectRawIdentifier: string,
+    subjectEntityType: FideEntityType,
+    subjectSourceType: FideEntityType,
+    predicateRawIdentifier: string,
+    predicateEntityType: FideStatementPredicateEntityType,
+    predicateSourceType: FideEntityType,
+    objectRawIdentifier: string,
+    objectEntityType: FideEntityType,
+    objectSourceType: FideEntityType
+): Promise<Statement> {
+    return createStatement({
+        subject: {
+            rawIdentifier: subjectRawIdentifier,
+            entityType: subjectEntityType,
+            sourceType: subjectSourceType
+        },
+        predicate: {
+            rawIdentifier: predicateRawIdentifier,
+            entityType: predicateEntityType,
+            sourceType: predicateSourceType
+        },
+        object: {
+            rawIdentifier: objectRawIdentifier,
+            entityType: objectEntityType,
+            sourceType: objectSourceType
+        }
+    });
 }
 
 /**
