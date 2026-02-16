@@ -9,7 +9,7 @@
  */
 
 import type { AttestationResult } from "../attestation/index.js";
-import type { Statement } from "../statement/build.js";
+import type { Statement } from "../../statement/build.js";
 
 /**
  * Statement object in lean JSONL format
@@ -152,4 +152,3 @@ export function generateJSONLFilename(date: Date = new Date(), sequence: number 
     
     return `${year}-${month}-${day}-${timeWindow}-${sequence}.jsonl`;
 }
-

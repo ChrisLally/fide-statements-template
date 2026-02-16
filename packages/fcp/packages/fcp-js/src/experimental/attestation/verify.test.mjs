@@ -1,13 +1,16 @@
 import {
     calculateFideId,
-    expandPredicateIdentifier,
-    calculateStatementFideId,
-    generateEd25519KeyPair,
-    exportEd25519Keys,
-    signEd25519,
+    calculateStatementFideId
+} from "../../../dist/index.js";
+import {
     createAttestation,
     verifyAttestation
-} from "../../dist/index.js";
+} from "../../../dist/experimental/attestation/index.js";
+import {
+    generateEd25519KeyPair,
+    exportEd25519Keys,
+    signEd25519
+} from "../../../dist/experimental/signing/index.js";
 
 console.log("🔍 Testing Attestation Verification\n");
 
@@ -17,13 +20,13 @@ let checks = 0;
 // Setup: Create attestation
 console.log("Setting up test attestation...");
 const aliceFideId = await calculateFideId("Person", "Person", "https://x.com/alice");
-const namePredicate = await calculateFideId("CreativeWork", "Product", expandPredicateIdentifier("schema:name"));
+const namePredicate = await calculateFideId("CreativeWork", "Product", "https://schema.org/name");
 const aliceNameValue = await calculateFideId("CreativeWork", "CreativeWork", "Alice");
 
 const statement1FideId = await calculateStatementFideId(aliceFideId, namePredicate, aliceNameValue);
 const statement2FideId = await calculateStatementFideId(
     await calculateFideId("Person", "Person", "https://x.com/bob"),
-    await calculateFideId("CreativeWork", "Product", expandPredicateIdentifier("schema:worksFor")),
+    await calculateFideId("CreativeWork", "Product", "https://schema.org/worksFor"),
     await calculateFideId("Organization", "Organization", "Acme Corp")
 );
 

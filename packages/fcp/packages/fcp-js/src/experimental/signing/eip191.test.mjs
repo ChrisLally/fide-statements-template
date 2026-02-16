@@ -1,4 +1,4 @@
-import { signEip191, verifyEip191 } from "../../dist/index.js";
+import { signEip191, verifyEip191 } from "../../../dist/experimental/signing/index.js";
 
 // Check if viem is available
 let viemAvailable = false;

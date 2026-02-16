@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
-import { calculateFideId, calculateStatementFideId } from "../dist/index.js";
+import { calculateFideId, calculateStatementFideId } from "../../dist/index.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const rawFideIdVectors = await readFile(resolve(here, "./vectors/calculateFideId.v0.json"), "utf8");

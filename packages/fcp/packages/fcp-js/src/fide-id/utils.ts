@@ -113,7 +113,7 @@ export function parseFideId(fideId: string): ParsedFideId {
  * Validate a Fide ID for use in a statement (subject, predicate, or object).
  *
  * Subject/Object: Statement source (0xX0) is only allowed for Statement (0x00) and Attestation (0xaa).
- * Predicate: Only 0x65 (CreativeWork+Product) or 0xe5 (EvaluationMethod+Product) allowed.
+ * Predicate: Only 0x65 (CreativeWork+Product) allowed.
  *
  * @param fideId The Fide ID to validate
  * @param role Role label for validation ("subject", "object", "predicate")
@@ -123,10 +123,10 @@ export function validateFideIdForStorage(fideId: string, role: "subject" | "obje
     const { typeChar, sourceChar } = extractFideIdTypeAndSource(fideId);
 
     if (role === "predicate") {
-        const valid = (typeChar === "6" && sourceChar === "5") || (typeChar === "e" && sourceChar === "5");
+        const valid = typeChar === "6" && sourceChar === "5";
         if (!valid) {
             throw new Error(
-                `Invalid predicate Fide ID: ${fideId}. Predicates must use 0x65 (CreativeWork+Product) or 0xe5 (EvaluationMethod+Product) only.`
+                `Invalid predicate Fide ID: ${fideId}. Predicates must use 0x65 (CreativeWork+Product) only.`
             );
         }
         return;

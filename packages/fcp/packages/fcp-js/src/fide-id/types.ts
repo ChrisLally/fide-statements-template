@@ -14,11 +14,10 @@ export type FideEntityType = keyof typeof FIDE_ENTITY_TYPE_MAP;
 /**
  * Allowed entity types for statement predicates.
  *
- * - `CreativeWork`: default schema/ontology predicate IRIs
- * - `EvaluationMethod`: protocol-defined evaluation method predicates
+ * - `CreativeWork`: schema/ontology predicate IRIs
  * @docs /fcp/docs/schema/#predicate
 */
-export type FideStatementPredicateEntityType = "CreativeWork" | "EvaluationMethod";
+export type FideStatementPredicateEntityType = "CreativeWork";
 
 /**
  * Single-character FCP type codes (hex) derived from `FIDE_ENTITY_TYPE_MAP`.

@@ -1,13 +1,17 @@
 import {
-    createAttestation,
+    buildStatementBatch
+} from "../../../dist/index.js";
+import { createAttestation } from "../../../dist/experimental/attestation/index.js";
+import {
     formatAttestationForJSONL,
     generateRegistryPath,
-    generateJSONLFilename,
+    generateJSONLFilename
+} from "../../../dist/experimental/broadcasting/index.js";
+import {
     generateEd25519KeyPair,
     exportEd25519Keys,
-    signEd25519,
-    buildStatementBatch
-} from "../../dist/index.js";
+    signEd25519
+} from "../../../dist/experimental/signing/index.js";
 
 console.log("📡 Testing Broadcasting Helpers\n");
 
@@ -18,7 +22,7 @@ let checks = 0;
 const statements = await buildStatementBatch([
     {
         subject: { rawIdentifier: "https://x.com/alice", entityType: "Person", sourceType: "Product" },
-        predicate: { rawIdentifier: "schema:name", entityType: "CreativeWork", sourceType: "Product" },
+        predicate: { rawIdentifier: "https://schema.org/name", entityType: "CreativeWork", sourceType: "Product" },
         object: { rawIdentifier: "Alice", entityType: "CreativeWork", sourceType: "CreativeWork" }
     }
 ]);

@@ -9,7 +9,6 @@ import {
     calculateStatementFideId,
     validateFideIdForStorage
 } from "../fide-id/index.js";
-import { expandPredicateIdentifier } from "../schema/index.js";
 import type { FideId, FideEntityType, FideStatementPredicateEntityType } from "../fide-id/types.js";
 
 /**
@@ -24,7 +23,7 @@ export interface StatementInput {
     /**
      * Predicate - explicit raw identifier with entity type and source type.
      * `rawIdentifier` may be shorthand (e.g. schema:name, owl:sameAs) or full URL.
-     * Entity type must be CreativeWork or EvaluationMethod.
+     * Entity type must be CreativeWork.
      */
     predicate: {
         rawIdentifier: string;
@@ -65,13 +64,10 @@ export interface Statement {
  * Create a statement object with all required fields.
  *
  * Always computes Fide IDs from rawIdentifier + entityType + sourceType.
- * Predicate shorthand (e.g. schema:name) is expanded before hashing.
+ * Predicates must be canonical full URLs.
  *
  * @param input - Statement input with subject, predicate, and object
  * @returns Complete statement object
- *
- * @infoCallout Predicate shorthand
- * Accepts both shorthand (e.g. schema:name, owl:sameAs) and full URLs (https://schema.org/name). Both produce the same Fide ID.
  *
  * @example
  * ```ts
@@ -93,13 +89,18 @@ export async function createStatement(input: StatementInput): Promise<Statement>
     let predicateFideId: FideId;
     let predicateRawIdentifier: string;
 
-    if (input.predicate.entityType !== "CreativeWork" && input.predicate.entityType !== "EvaluationMethod") {
+    if (input.predicate.entityType !== "CreativeWork") {
         throw new Error(
-            `Invalid predicate entityType: ${input.predicate.entityType}. Expected CreativeWork or EvaluationMethod.`
+            `Invalid predicate entityType: ${input.predicate.entityType}. Expected CreativeWork.`
         );
     }
 
-    predicateRawIdentifier = expandPredicateIdentifier(input.predicate.rawIdentifier);
+    predicateRawIdentifier = input.predicate.rawIdentifier;
+    if (!predicateRawIdentifier.includes("://")) {
+        throw new Error(
+            `Invalid predicate rawIdentifier: ${predicateRawIdentifier}. Expected canonical full URL (e.g. https://schema.org/name).`
+        );
+    }
     predicateFideId = await calculateFideId(
         input.predicate.entityType,
         input.predicate.sourceType,
@@ -141,9 +142,6 @@ export async function createStatement(input: StatementInput): Promise<Statement>
  *
  * @param inputs - Array of statement inputs
  * @returns Array of complete statement objects
- *
- * @infoCallout Predicate shorthand
- * Accepts both shorthand (e.g. schema:name, owl:sameAs) and full URLs (https://schema.org/name). Both produce the same Fide ID.
  *
  * @example
  * ```ts

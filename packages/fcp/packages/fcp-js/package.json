@@ -27,6 +27,22 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./experimental/attestation": {
+      "types": "./dist/experimental/attestation/index.d.ts",
+      "default": "./dist/experimental/attestation/index.js"
+    },
+    "./experimental/signing": {
+      "types": "./dist/experimental/signing/index.d.ts",
+      "default": "./dist/experimental/signing/index.js"
+    },
+    "./experimental/merkle": {
+      "types": "./dist/experimental/merkle/index.d.ts",
+      "default": "./dist/experimental/merkle/index.js"
+    },
+    "./experimental/broadcasting": {
+      "types": "./dist/experimental/broadcasting/index.d.ts",
+      "default": "./dist/experimental/broadcasting/index.js"
     }
   },
   "files": [
@@ -36,8 +52,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check-types": "tsc --noEmit",
-    "test": "pnpm run build && node test/runner.mjs",
-    "test:verbose": "pnpm run build && node test/runner.mjs --verbose",
+    "test": "pnpm run build && node scripts/test-runner.mjs",
+    "test:verbose": "pnpm run build && node scripts/test-runner.mjs --verbose",
     "example": "pnpm run build && node examples/fide-id/basic-usage.mjs",
     "example:fide-id": "pnpm run build && node examples/fide-id/basic-usage.mjs",
     "example:statement": "pnpm run build && node examples/statement/statement-example.mjs",

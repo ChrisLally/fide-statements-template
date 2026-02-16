@@ -5,8 +5,8 @@
  * Combines Fide ID calculation, Merkle trees, and signing.
  */
 
-import { calculateFideId } from "../fide-id/index.js";
-import type { FideId } from "../fide-id/types.js";
+import { calculateFideId } from "../../fide-id/index.js";
+import type { FideId } from "../../fide-id/types.js";
 import { buildMerkleTree, verifyMerkleProof, type MerkleProof } from "../merkle/index.js";
 
 // ============================================================================

@@ -14,7 +14,7 @@ checks += 1;
 try {
     const statement = await createStatement({
         subject: { rawIdentifier: 'https://x.com/alice', entityType: 'Person', sourceType: 'Product' },
-        predicate: { rawIdentifier: 'schema:name', entityType: 'CreativeWork', sourceType: 'Product' },
+        predicate: { rawIdentifier: 'https://schema.org/name', entityType: 'CreativeWork', sourceType: 'Product' },
         object: { rawIdentifier: 'Alice', entityType: 'CreativeWork', sourceType: 'CreativeWork' }
     });
 
@@ -47,12 +47,12 @@ try {
     const statements = await buildStatementBatch([
         {
             subject: { rawIdentifier: 'https://x.com/alice', entityType: 'Person', sourceType: 'Product' },
-            predicate: { rawIdentifier: 'schema:name', entityType: 'CreativeWork', sourceType: 'Product' },
+            predicate: { rawIdentifier: 'https://schema.org/name', entityType: 'CreativeWork', sourceType: 'Product' },
             object: { rawIdentifier: 'Alice', entityType: 'CreativeWork', sourceType: 'CreativeWork' }
         },
         {
             subject: { rawIdentifier: 'https://x.com/bob', entityType: 'Person', sourceType: 'Product' },
-            predicate: { rawIdentifier: 'schema:worksFor', entityType: 'CreativeWork', sourceType: 'Product' },
+            predicate: { rawIdentifier: 'https://schema.org/worksFor', entityType: 'CreativeWork', sourceType: 'Product' },
             object: { rawIdentifier: 'https://www.acme.com', entityType: 'Organization', sourceType: 'Product' }
         }
     ]);
@@ -81,7 +81,7 @@ try {
             entityType: "Person",
             sourceType: "Statement"
         },
-        predicate: { rawIdentifier: "schema:name", entityType: "CreativeWork", sourceType: "Product" },
+        predicate: { rawIdentifier: "https://schema.org/name", entityType: "CreativeWork", sourceType: "Product" },
         object: { rawIdentifier: "Alice", entityType: "CreativeWork", sourceType: "CreativeWork" }
     });
     failures += 1;
@@ -101,7 +101,7 @@ checks += 1;
 try {
     await createStatement({
         subject: { rawIdentifier: 'https://x.com/alice' }, // Missing entityType, sourceType
-        predicate: { rawIdentifier: 'schema:name', entityType: 'CreativeWork', sourceType: 'Product' },
+        predicate: { rawIdentifier: 'https://schema.org/name', entityType: 'CreativeWork', sourceType: 'Product' },
         object: { rawIdentifier: 'Alice', entityType: 'CreativeWork', sourceType: 'CreativeWork' }
     });
     failures += 1;
@@ -109,6 +109,26 @@ try {
 } catch (error) {
     if (error.message?.includes('entityType') || error.message?.includes('sourceEntityType')) {
         console.log("  ✅ Correctly rejected malformed subject");
+    } else {
+        failures += 1;
+        console.error("  ❌ Wrong error:", error.message);
+    }
+}
+
+// Test 5: Reject predicate shorthand (must be canonical URL)
+console.log("\n5. Testing rejection of predicate shorthand...");
+checks += 1;
+try {
+    await createStatement({
+        subject: { rawIdentifier: 'https://x.com/alice', entityType: 'Person', sourceType: 'Product' },
+        predicate: { rawIdentifier: 'schema:name', entityType: 'CreativeWork', sourceType: 'Product' },
+        object: { rawIdentifier: 'Alice', entityType: 'CreativeWork', sourceType: 'CreativeWork' }
+    });
+    failures += 1;
+    console.error("  ❌ Should have rejected shorthand predicate");
+} catch (error) {
+    if (error.message?.includes('canonical full URL')) {
+        console.log("  ✅ Correctly rejected shorthand predicate");
     } else {
         failures += 1;
         console.error("  ❌ Wrong error:", error.message);

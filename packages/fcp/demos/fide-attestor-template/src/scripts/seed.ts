@@ -19,15 +19,19 @@ import {
   OWL_PREDICATES,
   buildStatementBatch,
   createStatement,
+  experimental,
+  getStatementRawIdentifier,
+  type FideId,
+} from "@fide.work/fcp";
+import { loadDemoEnv } from "../lib/env.js";
+
+const {
   createAttestation,
   generateEd25519KeyPair,
   exportEd25519Keys,
   importEd25519Keys,
   signEd25519,
-  getStatementRawIdentifier,
-  type FideId,
-} from "@fide.work/fcp";
-import { loadDemoEnv } from "../lib/env.js";
+} = experimental;
 
 loadDemoEnv();
 
