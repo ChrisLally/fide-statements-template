@@ -49,7 +49,7 @@ const statement1 = await createStatement({
 });
 
 const statement2 = await createStatement({
-    subject: { rawIdentifier: 'x.com/bob', entityType: 'Person', sourceType: 'Product' },
+    subject: { rawIdentifier: 'https://x.com/bob', entityType: 'Person', sourceType: 'Product' },
     predicate: { rawIdentifier: schemaWorksFor, entityType: 'CreativeWork', sourceType: 'Product' },
     object: { rawIdentifier: 'https://www.acme.com', entityType: 'Organization', sourceType: 'Product' }
 });
