@@ -262,6 +262,53 @@ importers:
         specifier: ^5.8.3
         version: 5.9.3
 
+  packages/fcp/demos/fide-indexer-template:
+    dependencies:
+      '@fide.work/fcp':
+        specifier: workspace:*
+        version: link:../../packages/fcp-js
+      '@supabase/supabase-js':
+        specifier: ^2.95.3
+        version: 2.95.3
+      dotenv:
+        specifier: ^16.4.7
+        version: 16.6.1
+      pg:
+        specifier: ^8.18.0
+        version: 8.18.0
+    devDependencies:
+      '@types/node':
+        specifier: ^20.11.17
+        version: 20.19.33
+      '@types/pg':
+        specifier: ^8.16.0
+        version: 8.16.0
+      tsx:
+        specifier: ^4.7.1
+        version: 4.21.0
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
+
+  packages/fcp/demos/fide-statements-template:
+    dependencies:
+      '@fide.work/fcp':
+        specifier: workspace:*
+        version: link:../../packages/fcp-js
+      dotenv:
+        specifier: ^16.4.7
+        version: 16.6.1
+    devDependencies:
+      '@types/node':
+        specifier: ^20.11.17
+        version: 20.19.33
+      tsx:
+        specifier: ^4.7.1
+        version: 4.21.0
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
+
   packages/fcp/demos/indexer:
     dependencies:
       '@fide.work/fcp':

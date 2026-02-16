@@ -10,13 +10,16 @@
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types",
     "demo:fide-attestor-template:seed": "pnpm --filter fide-attestor-template seed",
+    "demo:fide-statements-template:seed": "pnpm --filter fide-statements-template seed",
     "demo:fide-indexer-template:index": "pnpm --filter fide-indexer-template index",
     "demo:fide-indexer-template:rekor": "pnpm --filter fide-indexer-template index:rekor",
     "demo:fide-indexer-template:filesystem": "pnpm --filter fide-indexer-template index:filesystem",
     "demo:fide-indexer-template:discover": "pnpm --filter fide-indexer-template index:discover",
     "subtree:fide-attestor-template:push": "bash scripts/subtree/fide-attestor-template-push.sh",
     "subtree:fide-attestor-template:pull": "bash scripts/subtree/fide-attestor-template-pull.sh",
-    "demo:fide-indexer-template:resolve": "pnpm --filter fide-indexer-template index:resolve"
+    "demo:fide-indexer-template:resolve": "pnpm --filter fide-indexer-template index:resolve",
+    "subtree:fide-statements-template:push": "bash scripts/subtree/fide-statements-template-push.sh",
+    "subtree:fide-statements-template:pull": "bash scripts/subtree/fide-statements-template-pull.sh"
   },
   "devDependencies": {
     "prettier": "^3.7.4",
