@@ -8,11 +8,8 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createHash } from "node:crypto";
 import {
-  buildStatementBatch,
-  calculateStatementFideId,
-  type FideId,
+  batchStatementsWithRoot,
 } from "@fide.work/fcp";
 import { loadDemoEnv } from "../lib/env.js";
 
@@ -33,7 +30,7 @@ async function main() {
   console.log("🌱 Seeding statements-only batch...\n");
   const runIso = new Date().toISOString();
 
-  const statements = await buildStatementBatch([
+  const { statements, root } = await batchStatementsWithRoot([
     {
       subject: {
         rawIdentifier: "https://x.com/microsoft",
@@ -87,19 +84,6 @@ async function main() {
       },
     },
   ]);
-
-  const statementFideIds = statements
-    .map((s) => s.statementFideId)
-    .filter((id): id is FideId => !!id);
-
-  if (statementFideIds.length === 0) {
-    throw new Error("No statement Fide IDs generated.");
-  }
-
-  const recomputed = await Promise.all(
-    statements.map((s) => calculateStatementFideId(s.subjectFideId, s.predicateFideId, s.objectFideId))
-  );
-  const root = createHash("sha256").update(recomputed.join("\n")).digest("hex");
 
   const now = new Date();
   const datePartition = getUTCDatePartition(now);
