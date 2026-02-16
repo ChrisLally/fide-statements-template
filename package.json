@@ -9,7 +9,6 @@
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types",
-    "demo:fide-attestor-template:seed": "pnpm --filter fide-attestor-template seed",
     "demo:fide-statements-template:seed": "pnpm --filter fide-statements-template seed",
     "demo:fide-indexer-template:index": "pnpm --filter fide-indexer-template index",
     "demo:fide-indexer-template:rekor": "pnpm --filter fide-indexer-template index:rekor",

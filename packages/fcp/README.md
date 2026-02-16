@@ -43,5 +43,6 @@ pnpm --filter @fide.work/fcp example
 `fcp-js` is self-contained with:
 
 - `src/` - SDK source
-- `test/` - SDK tests
+- `src/**/*.test.mjs` - SDK tests (co-located with source modules)
+- `scripts/test-runner.mjs` - SDK test runner
 - `examples/` - runnable SDK examples

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-PREFIX="${PREFIX:-packages/fcp/demos/fide-attestor-template}"
+PREFIX="${PREFIX:-packages/fcp/demos/experimental/fide-attestor-template}"
 REMOTE_URL="${REMOTE_URL:-https://github.com/ChrisLally/fide-attestor-template.git}"
 REMOTE_BRANCH="${REMOTE_BRANCH:-main}"
 SQUASH_FLAG="${SQUASH_FLAG:---squash}"
