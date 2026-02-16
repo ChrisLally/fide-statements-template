@@ -5,6 +5,49 @@ import type { StatementInput } from "./build.js";
  * Enforce statement input policy before deriving Fide IDs.
  */
 export function assertStatementInputPolicy(input: StatementInput): void {
+    if (!input || typeof input !== "object") {
+        throw new Error("Invalid statement input: expected object with subject, predicate, and object.");
+    }
+    if (!input.subject || typeof input.subject !== "object") {
+        throw new Error("Invalid statement input: missing subject object.");
+    }
+    if (!input.predicate || typeof input.predicate !== "object") {
+        throw new Error("Invalid statement input: missing predicate object.");
+    }
+    if (!input.object || typeof input.object !== "object") {
+        throw new Error("Invalid statement input: missing object object.");
+    }
+
+    if (typeof input.subject.rawIdentifier !== "string") {
+        throw new Error("Invalid statement input: subject.rawIdentifier must be a string.");
+    }
+    if (typeof input.subject.entityType !== "string") {
+        throw new Error("Invalid statement input: subject.entityType must be a string.");
+    }
+    if (typeof input.subject.sourceType !== "string") {
+        throw new Error("Invalid statement input: subject.sourceType must be a string.");
+    }
+
+    if (typeof input.predicate.rawIdentifier !== "string") {
+        throw new Error("Invalid statement input: predicate.rawIdentifier must be a string.");
+    }
+    if (typeof input.predicate.entityType !== "string") {
+        throw new Error("Invalid statement input: predicate.entityType must be a string.");
+    }
+    if (typeof input.predicate.sourceType !== "string") {
+        throw new Error("Invalid statement input: predicate.sourceType must be a string.");
+    }
+
+    if (typeof input.object.rawIdentifier !== "string") {
+        throw new Error("Invalid statement input: object.rawIdentifier must be a string.");
+    }
+    if (typeof input.object.entityType !== "string") {
+        throw new Error("Invalid statement input: object.entityType must be a string.");
+    }
+    if (typeof input.object.sourceType !== "string") {
+        throw new Error("Invalid statement input: object.sourceType must be a string.");
+    }
+
     if (input.predicate.entityType !== "CreativeWork") {
         throw new Error(
             `Invalid predicate entityType: ${input.predicate.entityType}. Expected CreativeWork.`

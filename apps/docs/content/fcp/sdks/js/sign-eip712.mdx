@@ -1,9 +1,0 @@
----
-title: "signEip712"
-description: "Sign data using EIP-712 typed data signing
-
-Requires viem to be installed as a peer dependency."
-full: true
----
-
-<SDKFunctionPage data={{"name":"signEip712","description":"Sign data using EIP-712 typed data signing\n\nRequires viem to be installed as a peer dependency.","section":"Signing","signatures":[{"description":"Sign data using EIP-712 typed data signing\n\nRequires viem to be installed as a peer dependency.","parameters":[{"name":"data","type":"string","optional":false,"description":"The data/message to sign or verify (hex string for EIP standards, plaintext for EIP-191)"},{"name":"privateKey","type":"`0x${string}`","optional":false,"description":"The private key for signing (0x-prefixed hex)"},{"name":"domain","type":"Eip712Domain","optional":true,"description":"EIP-712 domain (defaults to FCP domain)"}],"returnType":"Promise<`0x${string}`>","returnDescription":"Hex-encoded signature","exampleCode":"const signature = await signEip712(merkleRoot, privateKey);","referencedTypes":[{"name":"Eip712Domain","description":"EIP-712 Domain for Fide Context Protocol","type":"Eip712Domain","entries":{"name":{"description":"","type":"string","required":true},"version":{"description":"","type":"string","required":true},"chainId":{"description":"","type":"number","required":true},"verifyingContract":{"description":"","type":"`0x${string}`","required":true}}}]}],"constants":[],"referencedTypes":[{"name":"Eip712Domain","description":"EIP-712 Domain for Fide Context Protocol","type":"Eip712Domain","entries":{"name":{"description":"","type":"string","required":true},"version":{"description":"","type":"string","required":true},"chainId":{"description":"","type":"number","required":true},"verifyingContract":{"description":"","type":"`0x${string}`","required":true}}}]}} />

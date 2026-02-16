@@ -8,7 +8,12 @@ import {
     calculateFideId,
     calculateStatementFideId
 } from "../fide-id/index.js";
-import type { FideId, FideEntityType, FideStatementPredicateEntityType } from "../fide-id/types.js";
+import type {
+    FideId,
+    FideEntityType,
+    FideStatementPredicateEntityType,
+    FideStatementPredicateSourceType
+} from "../fide-id/types.js";
 import { assertStatementFideIdsPolicy, assertStatementInputPolicy } from "./policy.js";
 import { createHash } from "node:crypto";
 
@@ -29,7 +34,7 @@ export interface StatementInput {
     predicate: {
         rawIdentifier: string;
         entityType: FideStatementPredicateEntityType;
-        sourceType: FideEntityType;
+        sourceType: FideStatementPredicateSourceType;
     };
     /** Object - raw identifier with entity type and source type */
     object: { rawIdentifier: string; entityType: FideEntityType; sourceType: FideEntityType };
@@ -136,63 +141,6 @@ export async function createStatement(input: StatementInput): Promise<Statement>
         objectRawIdentifier,
         statementFideId
     };
-}
-
-/**
- * Create a statement using positional part fields.
- *
- * This is a convenience wrapper around `createStatement` for callers that prefer
- * positional arguments over a nested input object.
- *
- * @param subjectRawIdentifier Subject raw identifier.
- * @param subjectEntityType Subject entity type.
- * @param subjectSourceType Subject source entity type.
- * @param predicateRawIdentifier Predicate raw identifier (canonical URL).
- * @param predicateEntityType Predicate entity type.
- * @param predicateSourceType Predicate source entity type.
- * @param objectRawIdentifier Object raw identifier.
- * @param objectEntityType Object entity type.
- * @param objectSourceType Object source entity type.
- * @paramDefault subjectRawIdentifier https://x.com/alice
- * @paramDefault subjectEntityType Person
- * @paramDefault subjectSourceType Product
- * @paramDefault predicateRawIdentifier https://schema.org/name
- * @paramDefault predicateEntityType CreativeWork
- * @paramDefault predicateSourceType Product
- * @paramDefault objectRawIdentifier Alice
- * @paramDefault objectEntityType CreativeWork
- * @paramDefault objectSourceType CreativeWork
- * @returns Complete statement object
- * @throws Error if statement input policy fails, Fide ID format/policy checks fail, or statement ID derivation fails
- */
-export async function createStatementFromParts(
-    subjectRawIdentifier: string,
-    subjectEntityType: FideEntityType,
-    subjectSourceType: FideEntityType,
-    predicateRawIdentifier: string,
-    predicateEntityType: FideStatementPredicateEntityType,
-    predicateSourceType: FideEntityType,
-    objectRawIdentifier: string,
-    objectEntityType: FideEntityType,
-    objectSourceType: FideEntityType
-): Promise<Statement> {
-    return createStatement({
-        subject: {
-            rawIdentifier: subjectRawIdentifier,
-            entityType: subjectEntityType,
-            sourceType: subjectSourceType
-        },
-        predicate: {
-            rawIdentifier: predicateRawIdentifier,
-            entityType: predicateEntityType,
-            sourceType: predicateSourceType
-        },
-        object: {
-            rawIdentifier: objectRawIdentifier,
-            entityType: objectEntityType,
-            sourceType: objectSourceType
-        }
-    });
 }
 
 /**

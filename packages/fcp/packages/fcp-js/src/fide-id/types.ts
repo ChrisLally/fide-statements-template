@@ -20,6 +20,13 @@ export type FideEntityType = keyof typeof FIDE_ENTITY_TYPE_MAP;
 export type FideStatementPredicateEntityType = "CreativeWork";
 
 /**
+ * Allowed source types for statement predicates.
+ *
+ * - `Product`: predicate IRIs are treated as product-sourced vocabulary terms
+ */
+export type FideStatementPredicateSourceType = "Product";
+
+/**
  * Single-character FCP type codes (hex) derived from `FIDE_ENTITY_TYPE_MAP`.
  */
 export type FideEntityTypeChar = typeof FIDE_ENTITY_TYPE_MAP[FideEntityType];

@@ -35,6 +35,7 @@ export {
 export type {
     FideEntityType,
     FideStatementPredicateEntityType,
+    FideStatementPredicateSourceType,
     FideEntityTypeChar,
     FideId,
     FideFingerprint,
@@ -47,7 +48,6 @@ export type {
 
 export {
     createStatement,
-    createStatementFromParts,
     buildStatementBatchWithRoot,
     type StatementInput,
     type Statement,

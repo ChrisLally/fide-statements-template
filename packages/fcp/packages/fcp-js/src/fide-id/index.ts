@@ -31,6 +31,7 @@ export {
 export type {
     FideEntityType,
     FideStatementPredicateEntityType,
+    FideStatementPredicateSourceType,
     FideEntityTypeChar,
     FideId,
     FideFingerprint,

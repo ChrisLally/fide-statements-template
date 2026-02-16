@@ -1,6 +1,5 @@
 import {
     createStatement,
-    createStatementFromParts,
     buildStatementBatchWithRoot
 } from "../../dist/index.js";
 
@@ -75,40 +74,8 @@ try {
     console.error("  ❌ Error:", error.message);
 }
 
-// Test 3: createStatementFromParts parity with createStatement
-console.log("\n3. Testing createStatementFromParts parity...");
-checks += 1;
-try {
-    const fromObject = await createStatement({
-        subject: { rawIdentifier: 'https://x.com/alice', entityType: 'Person', sourceType: 'Product' },
-        predicate: { rawIdentifier: 'https://schema.org/name', entityType: 'CreativeWork', sourceType: 'Product' },
-        object: { rawIdentifier: 'Alice', entityType: 'CreativeWork', sourceType: 'CreativeWork' }
-    });
-    const fromParts = await createStatementFromParts(
-        'https://x.com/alice',
-        'Person',
-        'Product',
-        'https://schema.org/name',
-        'CreativeWork',
-        'Product',
-        'Alice',
-        'CreativeWork',
-        'CreativeWork'
-    );
-
-    if (fromObject.statementFideId !== fromParts.statementFideId) {
-        failures += 1;
-        console.error("  ❌ createStatementFromParts produced different statement ID");
-    } else {
-        console.log("  ✅ createStatementFromParts matches createStatement");
-    }
-} catch (error) {
-    failures += 1;
-    console.error("  ❌ Error:", error.message);
-}
-
-// Test 4: Reject Person+Statement (0xX0 forbidden)
-console.log("\n4. Testing rejection of Person+Statement...");
+// Test 3: Reject Person+Statement (0xX0 forbidden)
+console.log("\n3. Testing rejection of Person+Statement...");
 checks += 1;
 try {
     await createStatement({
@@ -131,8 +98,8 @@ try {
     }
 }
 
-// Test 5: Error when subject/object are malformed (missing entityType/sourceType)
-console.log("\n5. Testing error when subject is malformed...");
+// Test 4: Error when subject/object are malformed (missing entityType/sourceType)
+console.log("\n4. Testing error when subject is malformed...");
 checks += 1;
 try {
     await createStatement({
@@ -151,8 +118,8 @@ try {
     }
 }
 
-// Test 6: Reject predicate shorthand (must be canonical URL)
-console.log("\n6. Testing rejection of predicate shorthand...");
+// Test 5: Reject predicate shorthand (must be canonical URL)
+console.log("\n5. Testing rejection of predicate shorthand...");
 checks += 1;
 try {
     await createStatement({

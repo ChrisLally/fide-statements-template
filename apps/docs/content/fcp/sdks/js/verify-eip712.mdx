@@ -1,9 +1,0 @@
----
-title: "verifyEip712"
-description: "Verify an EIP-712 signature
-
-Requires viem to be installed as a peer dependency."
-full: true
----
-
-<SDKFunctionPage data={{"name":"verifyEip712","description":"Verify an EIP-712 signature\n\nRequires viem to be installed as a peer dependency.","section":"Signing","signatures":[{"description":"Verify an EIP-712 signature\n\nRequires viem to be installed as a peer dependency.","parameters":[{"name":"data","type":"string","optional":false,"description":"The data/message to sign or verify (hex string for EIP standards, plaintext for EIP-191)"},{"name":"signature","type":"`0x${string}`","optional":false,"description":"The cryptographic signature (0x-prefixed hex string)"},{"name":"address","type":"`0x${string}`","optional":false,"description":"The signer's Ethereum address (0x-prefixed hex)"},{"name":"domain","type":"Eip712Domain","optional":true,"description":"EIP-712 domain (defaults to FCP domain)"}],"returnType":"Promise<boolean>","returnDescription":"True if signature is valid","exampleCode":"const isValid = await verifyEip712(merkleRoot, signature, address);","referencedTypes":[{"name":"Eip712Domain","description":"EIP-712 Domain for Fide Context Protocol","type":"Eip712Domain","entries":{"name":{"description":"","type":"string","required":true},"version":{"description":"","type":"string","required":true},"chainId":{"description":"","type":"number","required":true},"verifyingContract":{"description":"","type":"`0x${string}`","required":true}}}]}],"constants":[],"referencedTypes":[{"name":"Eip712Domain","description":"EIP-712 Domain for Fide Context Protocol","type":"Eip712Domain","entries":{"name":{"description":"","type":"string","required":true},"version":{"description":"","type":"string","required":true},"chainId":{"description":"","type":"number","required":true},"verifyingContract":{"description":"","type":"`0x${string}`","required":true}}}]}} />
