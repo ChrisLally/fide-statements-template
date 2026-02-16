@@ -378,6 +378,22 @@ importers:
         specifier: ^5.8.3
         version: 5.9.3
 
+  packages/indexer:
+    dependencies:
+      '@fide.work/fcp':
+        specifier: workspace:*
+        version: link:../fcp/packages/fcp-js
+      '@fide.work/graph':
+        specifier: workspace:*
+        version: link:../graph
+    devDependencies:
+      '@types/node':
+        specifier: ^20.11.17
+        version: 20.19.33
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
+
   packages/typescript-config: {}
 
 packages:

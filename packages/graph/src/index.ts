@@ -1,2 +1,4 @@
-export type { GraphScope, StatementBatchRef } from './types.js';
-export { isStatementBatchPath, uniqueBatchKey } from './utils/statement-batches.js';
+// Graph package intentionally starts minimal.
+// Source-adapter concerns (repo/sha/path/webhook) live in @fide.work/indexer.
+
+export {};

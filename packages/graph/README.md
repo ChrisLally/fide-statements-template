@@ -1,11 +1,15 @@
 # @fide.work/graph
 
-Internal graph domain package for Fide Graph logic.
+Graph domain package for content-level graph logic.
 
-Current scope:
+Scope (current):
 
-- statement batch reference types
-- statement-batch path helpers
-- batch key helpers for idempotent ingest
+- minimal package scaffold
 
-This package is intended to sit between `apps/api` (HTTP surface) and `@fide.work/db` (storage layer).
+Planned scope:
+
+- statement batch parsing/validation
+- deterministic batch root verification
+- statement-level dedupe and ingest orchestration via `@fide.work/db`
+
+Source adapter concerns (GitHub webhooks, repo/sha/path refs) live in `@fide.work/indexer`.
