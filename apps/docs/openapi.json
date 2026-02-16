@@ -641,16 +641,13 @@
               "type": "string",
               "enum": [
                 "0",
-                "a",
-                "e",
                 "1",
                 "2",
                 "7",
                 "3",
                 "4",
                 "5",
-                "6",
-                "8"
+                "6"
               ],
               "description": "Optional entity type-char filter",
               "example": "1"

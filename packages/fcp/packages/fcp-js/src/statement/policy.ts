@@ -1,51 +1,95 @@
 import { extractFideIdTypeAndSource } from "../fide-id/index.js";
 import type { StatementInput } from "./build.js";
 
+function describeValue(value: unknown): string {
+    if (value === null) return "null";
+    if (value === undefined) return "undefined";
+    const kind = typeof value;
+    if (kind === "string") return `string(${JSON.stringify(value)})`;
+    if (kind === "number" || kind === "boolean" || kind === "bigint") return `${kind}(${String(value)})`;
+    if (kind === "function") return "function";
+    if (Array.isArray(value)) return `array(len=${value.length})`;
+    if (kind === "object") {
+        try {
+            return `object(${JSON.stringify(value)})`;
+        } catch {
+            return "object([unserializable])";
+        }
+    }
+    return kind;
+}
+
 /**
  * Enforce statement input policy before deriving Fide IDs.
  */
 export function assertStatementInputPolicy(input: StatementInput): void {
     if (!input || typeof input !== "object") {
-        throw new Error("Invalid statement input: expected object with subject, predicate, and object.");
+        throw new Error(
+            `Invalid statement input: expected object with subject, predicate, and object; got ${describeValue(input)}.`
+        );
     }
     if (!input.subject || typeof input.subject !== "object") {
-        throw new Error("Invalid statement input: missing subject object.");
+        throw new Error(
+            `Invalid statement input: expected subject object; got ${describeValue((input as any).subject)}.`
+        );
     }
     if (!input.predicate || typeof input.predicate !== "object") {
-        throw new Error("Invalid statement input: missing predicate object.");
+        throw new Error(
+            `Invalid statement input: expected predicate object; got ${describeValue((input as any).predicate)}.`
+        );
     }
     if (!input.object || typeof input.object !== "object") {
-        throw new Error("Invalid statement input: missing object object.");
+        throw new Error(
+            `Invalid statement input: expected object object at input.object; got ${describeValue((input as any).object)}.`
+        );
     }
 
     if (typeof input.subject.rawIdentifier !== "string") {
-        throw new Error("Invalid statement input: subject.rawIdentifier must be a string.");
+        throw new Error(
+            `Invalid statement input: expected subject.rawIdentifier as string; got ${describeValue((input as any).subject?.rawIdentifier)}.`
+        );
     }
     if (typeof input.subject.entityType !== "string") {
-        throw new Error("Invalid statement input: subject.entityType must be a string.");
+        throw new Error(
+            `Invalid statement input: expected subject.entityType as string; got ${describeValue((input as any).subject?.entityType)}.`
+        );
     }
     if (typeof input.subject.sourceType !== "string") {
-        throw new Error("Invalid statement input: subject.sourceType must be a string.");
+        throw new Error(
+            `Invalid statement input: expected subject.sourceType as string; got ${describeValue((input as any).subject?.sourceType)}.`
+        );
     }
 
     if (typeof input.predicate.rawIdentifier !== "string") {
-        throw new Error("Invalid statement input: predicate.rawIdentifier must be a string.");
+        throw new Error(
+            `Invalid statement input: expected predicate.rawIdentifier as string; got ${describeValue((input as any).predicate?.rawIdentifier)}.`
+        );
     }
     if (typeof input.predicate.entityType !== "string") {
-        throw new Error("Invalid statement input: predicate.entityType must be a string.");
+        throw new Error(
+            `Invalid statement input: expected predicate.entityType as string; got ${describeValue((input as any).predicate?.entityType)}.`
+        );
     }
     if (typeof input.predicate.sourceType !== "string") {
-        throw new Error("Invalid statement input: predicate.sourceType must be a string.");
+        throw new Error(
+            `Invalid statement input: expected predicate.sourceType as string; got ${describeValue((input as any).predicate?.sourceType)}.`
+        );
     }
 
     if (typeof input.object.rawIdentifier !== "string") {
-        throw new Error("Invalid statement input: object.rawIdentifier must be a string.");
+        throw new Error(
+            `Invalid statement input: expected object.rawIdentifier as string; got ${describeValue((input as any).object?.rawIdentifier)}.`
+        );
     }
     if (typeof input.object.entityType !== "string") {
-        throw new Error("Invalid statement input: object.entityType must be a string.");
+        throw new Error(
+            `Invalid statement input: expected object.entityType as string; got ${describeValue((input as any).object?.entityType)}.`
+        );
     }
     if (typeof input.object.sourceType !== "string") {
-        throw new Error("Invalid statement input: object.sourceType must be a string.");
+        throw new Error(
+            `Invalid statement input: expected object.sourceType as string; got ${describeValue((input as any).object?.sourceType)}.`
+        );
     }
 
     if (input.predicate.entityType !== "CreativeWork") {

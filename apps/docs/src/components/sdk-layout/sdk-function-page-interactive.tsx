@@ -18,6 +18,7 @@
 import { useState, useEffect } from 'react';
 import { Callout } from 'fumadocs-ui/components/callout';
 import { TypeTable } from 'fumadocs-ui/components/type-table';
+import JSON5 from 'json5';
 import { PackageManagerTabs } from '@/components/mdx/package-manager-tabs';
 import {
     Combobox,
@@ -487,7 +488,13 @@ function parseParamValue(value: ParamValue, type: string): unknown {
             try {
                 return JSON.parse(trimmed);
             } catch {
-                return trimmed;
+                try {
+                    // Accept JS-style object literals from @paramDefault and manual input
+                    // (e.g. unquoted keys, single quotes, trailing commas).
+                    return JSON5.parse(trimmed);
+                } catch {
+                    return trimmed;
+                }
             }
         }
 

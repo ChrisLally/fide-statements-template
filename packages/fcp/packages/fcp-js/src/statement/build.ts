@@ -86,15 +86,6 @@ export interface StatementBatchWithRoot {
  * @paramDefault input { subject: { rawIdentifier: "https://x.com/alice", entityType: "Person", sourceType: "Product" }, predicate: { rawIdentifier: "https://schema.org/name", entityType: "CreativeWork", sourceType: "Product" }, object: { rawIdentifier: "Alice", entityType: "CreativeWork", sourceType: "CreativeWork" } }
  * @returns Complete statement object
  * @throws Error if statement input policy fails, Fide ID format/policy checks fail, or statement ID derivation fails
- *
- * @example
- * ```ts
- * const statement = await createStatement({
- *   subject: { rawIdentifier: 'https://x.com/alice', entityType: 'Person', sourceType: 'Product' },
- *   predicate: { rawIdentifier: 'https://schema.org/name', entityType: 'CreativeWork', sourceType: 'Product' },
- *   object: { rawIdentifier: 'Alice', entityType: 'CreativeWork', sourceType: 'CreativeWork' }
- * });
- * ```
  */
 export async function createStatement(input: StatementInput): Promise<Statement> {
     assertStatementInputPolicy(input);
@@ -153,7 +144,7 @@ export async function createStatement(input: StatementInput): Promise<Statement>
  * - Result is returned as lowercase hex string
  *
  * @param inputs Array of statement inputs.
- * @paramDefault inputs [{ subject: { rawIdentifier: "https://x.com/alice", entityType: "Person", sourceType: "Product" }, predicate: { rawIdentifier: "https://schema.org/name", entityType: "CreativeWork", sourceType: "Product" }, object: { rawIdentifier: "Alice", entityType: "CreativeWork", sourceType: "CreativeWork" } }]
+ * @paramDefault inputs [{ subject: { rawIdentifier: "https://x.com/alice", entityType: "Person", sourceType: "Product" }, predicate: { rawIdentifier: "https://schema.org/name", entityType: "CreativeWork", sourceType: "Product" }, object: { rawIdentifier: "Alice", entityType: "CreativeWork", sourceType: "CreativeWork" } }, { subject: { rawIdentifier: "https://x.com/bob", entityType: "Person", sourceType: "Product" }, predicate: { rawIdentifier: "https://schema.org/worksFor", entityType: "CreativeWork", sourceType: "Product" }, object: { rawIdentifier: "https://www.acme.com", entityType: "Organization", sourceType: "Product" } }]
  * @returns Statements, statement IDs (input order), and deterministic root hash
  * @throws Error if one or more built statements are missing `statementFideId`
  */
