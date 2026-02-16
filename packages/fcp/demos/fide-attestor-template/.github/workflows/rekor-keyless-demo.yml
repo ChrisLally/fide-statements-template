@@ -195,21 +195,20 @@ jobs:
               exit 1
             fi
 
-            cat > rekor_v2_payload.json <<EOF
-            {
-              "dsseRequestV002": {
-                "envelope": ${ENVELOPE_JSON},
-                "verifiers": [
-                  {
-                    "x509Certificate": {
-                      "rawBytes": "${CERT_B64}"
-                    },
-                    "keyDetails": "PKIX_ECDSA_P256_SHA_256"
-                  }
-                ]
-              }
-            }
-            EOF
+            jq -n \
+              --argjson envelope "${ENVELOPE_JSON}" \
+              --arg certB64 "${CERT_B64}" \
+              '{
+                dsseRequestV002: {
+                  envelope: $envelope,
+                  verifiers: [
+                    {
+                      x509Certificate: { rawBytes: $certB64 },
+                      keyDetails: "PKIX_ECDSA_P256_SHA_256"
+                    }
+                  ]
+                }
+              }' > rekor_v2_payload.json
 
             http_code="$(curl -sS -o rekor_http_response.json -w "%{http_code}" -X POST \
               -H "Content-Type: application/json" \
