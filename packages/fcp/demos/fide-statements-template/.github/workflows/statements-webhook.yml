@@ -85,7 +85,7 @@ jobs:
         shell: bash
         env:
           WEBHOOK_URL: ${{ secrets.FIDE_WEBHOOK_URL }}
-          WEBHOOK_URL_FALLBACK: https://api.fide.work/webhook/statements
+          WEBHOOK_URL_FALLBACK: https://api.fide.work/graph/v1/webhooks/statements
         run: |
           set -euo pipefail
 
