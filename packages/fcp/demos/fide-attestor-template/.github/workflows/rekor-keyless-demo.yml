@@ -48,7 +48,7 @@ jobs:
           ATTESTATION_FILE: ${{ steps.latest.outputs.file }}
           FCP_PREDICATE_TYPE: https://fide.work/fcp/predicate/statement-attestation/v1
           REKOR_V2_URL: https://log2025-1.rekor.sigstore.dev
-          TSA_URL: https://timestamp.sigstore.dev
+          TSA_URL: https://timestamp.sigstore.dev/api/v1/timestamp
         run: |
           set -euo pipefail
           stamp="$(date -u +%Y-%m-%d-%H%M)"
