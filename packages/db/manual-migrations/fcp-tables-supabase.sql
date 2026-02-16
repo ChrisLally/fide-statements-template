@@ -1,24 +1,20 @@
 -- ============================================================================
 -- FIDE CONTEXT PROTOCOL (FCP) - DATABASE SCHEMA
--- Version: Pure Triple Model with Evaluation-Based Identity Resolution (Critique 21)
--- Updated: 2026-02-07
+-- Version: Pure Triple Model (No EvaluationMethod/Attestation Entity Types)
+-- Updated: 2026-02-16
 -- ============================================================================
 -- This schema implements the standardized FCP architecture:
 --
 -- 1. fcp_raw_identifiers: Lookup table mapping fingerprints ↔ rawIdentifiers
 -- 2. fcp_statements: Core statements table (Subject-Predicate-Object as fingerprints)
+--    - Includes content and relationship statements
 --    - Includes owl:sameAs statements (alias → primary relationships)
---    - Includes evaluation statements (trust decisions about owl:sameAs)
 --
--- Identity Resolution (Critique 21 - Evaluation-Based Trust):
---   - No fcp_alias_resolution table (removed)
---   - Trust via evaluations: EvaluationMethod https://github.com/fide-work/evaluation-methods/alias-resolution-trust
---   - Evaluation statements carry verdict literals (-1/0/1) about owl:sameAs statements
---   - Materialized view keeps owl:sameAs candidates where trust_votes > reject_votes
---   - Evaluator consensus (net trust score) + lexical tie-break determines primary
---   - Single source of truth: evaluation statements in the graph
+-- Identity Resolution:
+--   - No fcp_alias_resolution table
+--   - Resolution policy is handled in materialized view/service logic.
 --
--- All views (attestations, claims, etc.) are derived from statements.
+-- All views are derived from statements.
 -- See fcp-views-supabase.sql for regular views.
 -- See fcp-materialized-views-supabase.sql for materialized views.
 
@@ -55,10 +51,7 @@ CREATE TYPE fcp_entity_type AS ENUM (
     '4',  -- Event (Schema.org Event)
     '5',  -- Product (Schema.org Product)
     '6',  -- CreativeWork (literals, predicates, identifiers, statements)
-    '7',  -- AutonomousAgent (FIDE extension, AI/bot)
-    '8',  -- CryptographicAccount (FIDE extension, blockchain address)
-    'e',  -- EvaluationMethod (FIDE extension, evaluation predicates)
-    'a'   -- Attestation (FIDE extension, batch signing container)
+    '7'   -- AutonomousAgent (FIDE extension, AI/bot)
 );
 
 -- Source Identifier Type:
@@ -68,8 +61,7 @@ CREATE TYPE fcp_entity_type AS ENUM (
 -- Statement Predicate Type: Semantic category of predicate
 -- Enables zero-lookup reputation queries without string parsing
 CREATE TYPE fcp_statement_predicate_type AS ENUM (
-    '6',  -- Attribute/Relationship: Attributes and relationships (schema:name, sec:controller, prov:wasGeneratedBy)
-    'e'   -- Evaluation: Subjective judgments and opinions (Fide-*, schema:rating)
+    '6'   -- Attribute/Relationship: canonical CreativeWork predicate identifiers
 );
 
 -- ============================================================================
@@ -113,82 +105,41 @@ CREATE TABLE fcp_statements (
     subject_fingerprint CHAR(38) NOT NULL,
     predicate_fingerprint CHAR(38) NOT NULL,
     predicate_type fcp_statement_predicate_type NOT NULL,           -- Enables zero-lookup reputation queries
-    predicate_source_type fcp_entity_type NOT NULL,                 -- Usually '6' (CreativeWork) for string-identified predicates
+    predicate_source_type fcp_entity_type NOT NULL,                 -- '5' (Product) for canonical URL predicates in current SDK
     object_type fcp_entity_type NOT NULL,
     object_source_type fcp_entity_type NOT NULL,
     object_fingerprint CHAR(38) NOT NULL,
 
-    -- Predicate source type constraint: Ensures predicates have correct source types
-    -- EvaluationMethods (type 'e') MUST use Statement-derived primaries (source '0')
-    -- CreativeWork predicates (type '6') MUST use CreativeWork source ('6')
+    -- Predicate source type constraint:
+    -- CreativeWork predicates (type '6') MUST use Product source ('5')
+    -- to match current SDK policy.
     CONSTRAINT chk_predicate_source_type CHECK (
-        (predicate_type = 'e' AND predicate_source_type = '0') OR
-        (predicate_type = '6' AND predicate_source_type = '6')
+        (predicate_type = '6' AND predicate_source_type = '5')
     ),
 
     -- Protocol entity self-sourcing constraint: Protocol entities must be self-sourced
     -- Statements (type '0') MUST have Statement source ('0') = 0x00
-    -- Attestations (type 'a') MUST have Attestation source ('a') = 0xaa
     CONSTRAINT chk_subject_protocol_self_sourced CHECK (
         (subject_type = '0' AND subject_source_type = '0') OR
-        (subject_type = 'a' AND subject_source_type = 'a') OR
-        (subject_type NOT IN ('0', 'a'))
+        (subject_type <> '0')
     ),
     CONSTRAINT chk_object_protocol_self_sourced CHECK (
         (object_type = '0' AND object_source_type = '0') OR
-        (object_type = 'a' AND object_source_type = 'a') OR
-        (object_type NOT IN ('0', 'a'))
+        (object_type <> '0')
     )
 );
 
 -- ============================================================================
--- NO fcp_alias_resolution TABLE (Critique 21 - Evaluation-Based Trust)
+-- NO fcp_alias_resolution TABLE
 -- ============================================================================
--- Resolution now happens entirely in the materialized view via evaluation statements.
--- There is no separate lookup table - trust decisions are evaluation statements in the graph.
---
--- Architecture (Evaluation-Based):
---   - owl:sameAs statements in fcp_statements define alias → primary relationships
---   - Indexers issue evaluation statements (https://github.com/fide-work/evaluation-methods/alias-resolution-trust) about which ones they trust
---   - fcp_statements_identifiers_resolved keeps candidates where trust_votes > reject_votes
---   - Evaluator consensus ranks candidates by net trust score, then trust vote count
---   - Lexical fingerprint tie-break ensures deterministic results
---
--- EvaluationMethod: https://github.com/fide-work/evaluation-methods/alias-resolution-trust
---   - Subject: owl:sameAs Statement ID (did:fide:0x00...)
---   - Predicate: EvaluationMethod Primary Fide ID (did:fide:0xe0...) for https://github.com/fide-work/evaluation-methods/alias-resolution-trust
---   - Object: Verdict (1=Trust, -1=Reject, 0=Uncertain)
---
--- Benefits:
---   - Trust is explicit: evaluation statements (signed, verifiable, auditable)
---   - FCP-native: evaluations are first-class protocol entities
---   - Composable: aggregate evaluations across multiple indexers
---   - Revocable: issue new evaluation with verdict=-1 to revoke trust
---   - Method reusable: other indexers can use same method or define their own
---
--- Querying trust decisions:
---   -- What are trust/reject vote totals for this owl:sameAs statement?
---   SELECT
---     COUNT(*) FILTER (WHERE obj_ident.raw_identifier = '1') AS trust_votes,
---     COUNT(*) FILTER (WHERE obj_ident.raw_identifier = '-1') AS reject_votes
---   FROM fcp_statements eval
---   JOIN fcp_raw_identifiers pred_ident ON pred_ident.identifier_fingerprint = eval.predicate_fingerprint
---   JOIN fcp_raw_identifiers obj_ident ON obj_ident.identifier_fingerprint = eval.object_fingerprint
---   WHERE pred_ident.raw_identifier = 'https://github.com/fide-work/evaluation-methods/alias-resolution-trust'
---   AND eval.subject_fingerprint = <sameAs_statement_fp>;
---
--- Querying aliases of an entity:
---   SELECT s.*
---   FROM fcp_statements s
---   JOIN fcp_raw_identifiers pred_ident ON pred_ident.identifier_fingerprint = s.predicate_fingerprint
---   WHERE pred_ident.raw_identifier = 'owl:sameAs'
---   AND s.object_fingerprint = <primary_fingerprint>;
+-- Resolution policy is derived from statements and materialized-view/service logic.
+-- No separate alias table is required in this schema.
 
 -- ============================================================================
 -- TABLE AND COLUMN COMMENTS
 -- ============================================================================
 COMMENT ON TABLE fcp_raw_identifiers IS 'Fingerprint → rawIdentifier lookup. Maps 38-char fingerprints to human-readable identifiers.';
-COMMENT ON TABLE fcp_statements IS 'Core triple store. All FCP statements as Subject-Predicate-Object tuples with fingerprint references. Includes: content statements, PROV-O links (wasGeneratedBy, wasAssociatedWith), controller relationships (sec:controller), owl:sameAs statements (alias → primary relationships), and evaluation statements (trust decisions using EvaluationMethods like Fide-AliasResolutionTrust-v1). Resolution computed in fcp_statements_identifiers_resolved materialized view.';
+COMMENT ON TABLE fcp_statements IS 'Core triple store. All FCP statements as Subject-Predicate-Object tuples with fingerprint references. Includes content statements and relationship statements (for example schema:name, schema:citation, owl:sameAs). Resolution computed in fcp_statements_identifiers_resolved materialized view.';
 
 -- ============================================================================
 -- INDEXES
@@ -198,44 +149,30 @@ CREATE INDEX IF NOT EXISTS idx_statements_predicate ON fcp_statements(predicate_
 CREATE INDEX IF NOT EXISTS idx_statements_object ON fcp_statements(object_fingerprint);
 CREATE INDEX IF NOT EXISTS idx_statements_spo ON fcp_statements(subject_fingerprint, predicate_fingerprint, object_fingerprint);
 
--- Zero-lookup reputation query index: Get all evaluations for an entity instantly
--- WHERE subject_fingerprint = 'entity_fp' AND predicate_type = 'e'
-CREATE INDEX IF NOT EXISTS idx_statements_evaluations_by_subject
-ON fcp_statements(subject_fingerprint, predicate_type)
-WHERE predicate_type = 'e';
-
 -- PROV-O Triangle discovery indexes
 CREATE INDEX IF NOT EXISTS idx_statements_prov_generated_by
 ON fcp_statements(predicate_fingerprint)
-WHERE predicate_type = '6' AND predicate_source_type = '6';
+WHERE predicate_type = '6' AND predicate_source_type = '5';
 
 CREATE INDEX IF NOT EXISTS idx_statements_prov_associated_with
 ON fcp_statements(predicate_fingerprint, object_fingerprint)
-WHERE predicate_type = '6' AND predicate_source_type = '6';
+WHERE predicate_type = '6' AND predicate_source_type = '5';
 
 -- sec:controller discovery index
 CREATE INDEX IF NOT EXISTS idx_statements_did_controller
 ON fcp_statements(subject_fingerprint, predicate_fingerprint)
-WHERE predicate_type = '6' AND predicate_source_type = '6';
+WHERE predicate_type = '6' AND predicate_source_type = '5';
 
 -- Predicate lookup with type filtering
 CREATE INDEX IF NOT EXISTS idx_statements_predicate_with_type
 ON fcp_statements(predicate_fingerprint, predicate_type);
 
 -- ============================================================================
--- INDEXES FOR EVALUATION-BASED RESOLUTION (Critique 21)
+-- RESOLUTION QUERY SUPPORT
 -- ============================================================================
--- These indexes support the evaluation-based resolution logic in fcp_statements_identifiers_resolved
---
 -- Note: fcp_statements only contains fingerprints, not rawIdentifiers.
--- Resolution queries must JOIN to fcp_raw_identifiers to filter by rawIdentifier (`raw_identifier`).
--- Indexes on predicate_fingerprint will be used for these queries.
---
--- The existing predicate_fingerprint indexes (created above) support:
---   - Evaluation method queries (filter by predicate_fingerprint for alias-resolution-trust)
---   - owl:sameAs queries (filter by predicate_fingerprint for owl:sameAs)
---
--- Additional specialized indexes can be added later if needed based on query patterns.
+-- Resolution queries JOIN fcp_raw_identifiers when filtering by predicate rawIdentifier.
+-- Existing predicate_fingerprint indexes are sufficient for now.
 
 -- ============================================================================
 -- SCHEMA INTEGRITY ENFORCEMENT
@@ -243,12 +180,10 @@ ON fcp_statements(predicate_fingerprint, predicate_type);
 -- FCP PROTOCOL REQUIREMENT: All statements must have complete predicate metadata.
 --
 -- Predicate Type (predicate_type):
---   - '6' = Attribute/Relationship (CreativeWork predicates: schema:name, sec:controller, owl:sameAs)
---   - 'e' = Evaluation (subjective judgments: https://github.com/fide-work/evaluation-methods/*, https://github.com/fide-work/evaluation-methods/statement-accuracy)
+--   - '6' = Attribute/Relationship (CreativeWork predicates: schema:name, schema:citation, owl:sameAs)
 --
 -- Predicate Source Type (predicate_source_type):
---   - Usually '6' = CreativeWork (string-identified predicates)
---   - Could be other types for special predicates
+--   - '5' = Product (canonical string URL predicates in current SDK)
 --
 -- The schema enforces NOT NULL constraints on both columns.
 -- Inserts without these fields will fail at the database level.
@@ -258,6 +193,4 @@ ON fcp_statements(predicate_fingerprint, predicate_type);
 -- HELPER FUNCTIONS
 -- ============================================================================
 -- Note: Identity resolution logic is implemented in the materialized view
--- (fcp_statements_identifiers_resolved) using evaluation-based trust (Critique 21).
--- Evaluation issuance handled in service layer for better testability and type safety.
--- No additional database functions needed for resolution.
+-- (fcp_statements_identifiers_resolved).
