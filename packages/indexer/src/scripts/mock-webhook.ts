@@ -13,6 +13,8 @@ async function main(): Promise<void> {
   console.log(JSON.stringify({
     source: 'github-webhook',
     repo: payload.repo,
+    repoId: payload.repoId,
+    ownerId: payload.ownerId,
     sha: payload.sha,
     runId: payload.runId,
     processed: results,

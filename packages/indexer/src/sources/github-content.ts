@@ -1,6 +1,6 @@
 import type { SourceStatementBatchRef } from '../types.js';
 
-function toRawContentUrl(ref: SourceStatementBatchRef): string {
+export function toRawContentUrl(ref: SourceStatementBatchRef): string {
   const encodedPath = ref.path
     .split('/')
     .map((segment) => encodeURIComponent(segment))

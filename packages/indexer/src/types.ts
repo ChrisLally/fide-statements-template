@@ -17,6 +17,8 @@ export type GithubStatementsWebhookItem = {
 
 export type GithubStatementsWebhookPayload = {
   repo: string;
+  repoId: string;
+  ownerId: string;
   sha: string;
   runId: string;
   items: GithubStatementsWebhookItem[];

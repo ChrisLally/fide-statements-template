@@ -23,7 +23,10 @@ export const fcpStatements = pgTable('fcp_statements', {
 
 export const fcpStatementBatches = pgTable('fcp_statement_batches', {
   root: char('root', { length: 64 }).primaryKey(),
-  source: text('source').notNull().default('unknown'),
+  repoId: text('repo_id').notNull(),
+  ownerId: text('owner_id').notNull(),
+  githubRun: text('github_run').notNull(),
+  url: text('url').notNull(),
   firstSeenAt: timestamp('first_seen_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -40,7 +43,6 @@ export const fcpStatementBatchItems = pgTable('fcp_statement_batch_items', {
     table.batchRoot,
     table.statementFingerprint
   ),
-  statementFingerprintIdx: index('idx_fcp_statement_batch_items_statement').on(table.statementFingerprint),
 }));
 
 export const fideApiKeys = pgTable('fide_api_keys', {

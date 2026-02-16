@@ -19,7 +19,10 @@ export type ParsedStatementBatch = {
 export type IngestJsonlBatchInput = {
   expectedRoot: string;
   jsonl: string;
-  source?: string;
+  repoId: string;
+  ownerId: string;
+  githubRun: string;
+  url: string;
 };
 
 export type IngestBatchResult = {

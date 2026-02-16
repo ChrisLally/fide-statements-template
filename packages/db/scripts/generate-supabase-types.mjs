@@ -10,7 +10,12 @@ import { fileURLToPath } from "node:url";
 const PROJECT_ID = "qssddvtvjopazmhocivh";
 const SCHEMA = "public";
 
-const ALLOWED_TABLES = new Set(["fcp_raw_identifiers", "fcp_statements"]);
+const ALLOWED_TABLES = new Set([
+  "fcp_raw_identifiers",
+  "fcp_statements",
+  "fcp_statement_batches",
+  "fcp_statement_batch_items",
+]);
 const ALLOWED_VIEWS = new Set(["fcp_statements_identifiers_resolved"]);
 const ALLOWED_FUNCTIONS = new Set();
 const REQUIRED_ENUMS = new Set(["fcp_entity_type", "fcp_statement_predicate_type"]);
@@ -89,9 +94,9 @@ function getEntries(inner) {
   return entries;
 }
 
-function buildInner(entries, keepSet, { emptyAsNever = true } = {}) {
+function buildInner(entries, keepSet, { emptyAsNever = true, requireAll = true } = {}) {
   const missing = [...keepSet].filter((name) => !entries.some((entry) => entry.key === name));
-  if (missing.length > 0) {
+  if (requireAll && missing.length > 0) {
     throw new Error(`Missing expected entries: ${missing.join(", ")}`);
   }
 
@@ -153,7 +158,7 @@ function filterGeneratedTypes(fullTypesSource) {
   const enumEntries = getEntries(enumsInner);
 
   const filteredTablesInner = buildInner(tableEntries, ALLOWED_TABLES);
-  const filteredViewsInner = buildInner(viewEntries, ALLOWED_VIEWS);
+  const filteredViewsInner = buildInner(viewEntries, ALLOWED_VIEWS, { requireAll: false });
   const filteredFunctionsInner = buildInner(functionEntries, ALLOWED_FUNCTIONS);
 
   const usedEnums = collectEnumReferences(filteredTablesInner, filteredViewsInner, filteredFunctionsInner);

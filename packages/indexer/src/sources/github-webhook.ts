@@ -15,6 +15,8 @@ export const parseGithubStatementsWebhookPayload = (input: unknown): GithubState
 
   const payload = input as Record<string, unknown>;
   const repo = assertNonEmptyString(payload.repo, 'repo');
+  const repoId = assertNonEmptyString(payload.repoId, 'repoId');
+  const ownerId = assertNonEmptyString(payload.ownerId, 'ownerId');
   const sha = assertNonEmptyString(payload.sha, 'sha');
   const runId = assertNonEmptyString(payload.runId, 'runId');
 
@@ -50,7 +52,7 @@ export const parseGithubStatementsWebhookPayload = (input: unknown): GithubState
     return { path, root, sha256 };
   });
 
-  return { repo, sha, runId, items };
+  return { repo, repoId, ownerId, sha, runId, items };
 };
 
 export const toSourceStatementBatchRefs = (

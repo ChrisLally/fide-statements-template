@@ -13,7 +13,10 @@ export async function applyStatementBatch(input: IngestJsonlBatchInput): Promise
 
   const result = await ingestStatementBatch({
     root: parsed.root,
-    source: input.source ?? 'unknown',
+    repoId: input.repoId,
+    ownerId: input.ownerId,
+    githubRun: input.githubRun,
+    url: input.url,
     statements: parsed.statements,
   });
 

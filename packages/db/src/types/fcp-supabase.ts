@@ -29,6 +29,73 @@ export type Database = {
         }
         Relationships: []
       }
+      fcp_statement_batch_items: {
+        Row: {
+          batch_root: string
+          indexed_at: string
+          statement_fingerprint: string
+        }
+        Insert: {
+          batch_root: string
+          indexed_at?: string
+          statement_fingerprint: string
+        }
+        Update: {
+          batch_root?: string
+          indexed_at?: string
+          statement_fingerprint?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fcp_statement_batch_items_batch_root_fkey"
+            columns: ["batch_root"]
+            isOneToOne: false
+            referencedRelation: "fcp_statement_batches"
+            referencedColumns: ["root"]
+          },
+          {
+            foreignKeyName: "fcp_statement_batch_items_statement_fingerprint_fkey"
+            columns: ["statement_fingerprint"]
+            isOneToOne: false
+            referencedRelation: "fcp_statements"
+            referencedColumns: ["statement_fingerprint"]
+          },
+          {
+            foreignKeyName: "fcp_statement_batch_items_statement_fingerprint_fkey"
+            columns: ["statement_fingerprint"]
+            isOneToOne: false
+            referencedRelation: "fcp_statements_identifiers_resolved"
+            referencedColumns: ["statement_fingerprint"]
+          },
+        ]
+      }
+      fcp_statement_batches: {
+        Row: {
+          first_seen_at: string
+          github_run: string
+          owner_id: string
+          repo_id: string
+          root: string
+          url: string
+        }
+        Insert: {
+          first_seen_at?: string
+          github_run: string
+          owner_id: string
+          repo_id: string
+          root: string
+          url: string
+        }
+        Update: {
+          first_seen_at?: string
+          github_run?: string
+          owner_id?: string
+          repo_id?: string
+          root?: string
+          url?: string
+        }
+        Relationships: []
+      }
       fcp_statements: {
         Row: {
           first_created_at: string

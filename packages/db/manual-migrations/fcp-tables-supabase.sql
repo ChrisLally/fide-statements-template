@@ -138,7 +138,10 @@ CREATE TABLE fcp_statements (
 -- Tracks first-seen statement batch roots and links batch roots to statement fingerprints.
 CREATE TABLE fcp_statement_batches (
     root CHAR(64) PRIMARY KEY,
-    source TEXT NOT NULL DEFAULT 'unknown',
+    repo_id TEXT NOT NULL,
+    owner_id TEXT NOT NULL,
+    github_run TEXT NOT NULL,
+    url TEXT NOT NULL,
     first_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -189,9 +192,6 @@ ON fcp_statements(predicate_fingerprint, predicate_type);
 
 CREATE INDEX IF NOT EXISTS idx_statement_batches_first_seen
 ON fcp_statement_batches(first_seen_at);
-
-CREATE INDEX IF NOT EXISTS idx_statement_batch_items_statement
-ON fcp_statement_batch_items(statement_fingerprint);
 
 -- ============================================================================
 -- RESOLUTION QUERY SUPPORT

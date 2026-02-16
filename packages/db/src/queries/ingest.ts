@@ -90,10 +90,22 @@ export async function hasStatementBatchRoot(root: string): Promise<boolean> {
   return rows.length > 0;
 }
 
-export async function insertStatementBatchRoot(root: string, source: string = 'unknown'): Promise<void> {
+export async function insertStatementBatchRoot(input: {
+  root: string;
+  repoId: string;
+  ownerId: string;
+  githubRun: string;
+  url: string;
+}): Promise<void> {
   await db
     .insert(fcpStatementBatches)
-    .values({ root, source })
+    .values({
+      root: input.root,
+      repoId: input.repoId,
+      ownerId: input.ownerId,
+      githubRun: input.githubRun,
+      url: input.url,
+    })
     .onConflictDoNothing({ target: fcpStatementBatches.root });
 }
 
@@ -145,7 +157,10 @@ export async function listBatchStatementFingerprints(batchRoot: string): Promise
 
 export async function ingestStatementBatch(input: {
   root: string;
-  source?: string;
+  repoId: string;
+  ownerId: string;
+  githubRun: string;
+  url: string;
   statements: Statement[];
 }): Promise<{ insertedBatch: boolean; statementCount: number }> {
   const exists = await hasStatementBatchRoot(input.root);
@@ -156,7 +171,13 @@ export async function ingestStatementBatch(input: {
   const { rawIdentifiers, statementRows } = normalizeStatementsForIngest(input.statements);
   const statementFingerprints = statementRows.map((row) => row.statementFingerprint);
 
-  await insertStatementBatchRoot(input.root, input.source ?? 'unknown');
+  await insertStatementBatchRoot({
+    root: input.root,
+    repoId: input.repoId,
+    ownerId: input.ownerId,
+    githubRun: input.githubRun,
+    url: input.url,
+  });
   await upsertRawIdentifiers(rawIdentifiers);
   await upsertStatements(statementRows);
   await linkStatementsToBatch(input.root, statementFingerprints);

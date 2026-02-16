@@ -1,7 +1,7 @@
 import { applyStatementBatch } from '@fide.work/graph';
 import type { GithubStatementsWebhookPayload } from './types.js';
 import { toSourceStatementBatchRefs } from './sources/github-webhook.js';
-import { fetchStatementBatchJsonlFromGitHub } from './sources/github-content.js';
+import { fetchStatementBatchJsonlFromGitHub, toRawContentUrl } from './sources/github-content.js';
 
 export type ProcessedBatchResult = {
   repo: string;
@@ -18,10 +18,15 @@ export async function processGithubWebhookPayload(payload: GithubStatementsWebho
 
   for (const ref of refs) {
     const jsonl = await fetchStatementBatchJsonlFromGitHub(ref);
+    const url = toRawContentUrl(ref);
+    const githubRun = `https://github.com/${payload.repo}/actions/runs/${payload.runId}`;
     const applied = await applyStatementBatch({
       expectedRoot: ref.root,
       jsonl,
-      source: `github-webhook:${ref.repo}`,
+      repoId: payload.repoId,
+      ownerId: payload.ownerId,
+      githubRun,
+      url,
     });
 
     results.push({
