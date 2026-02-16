@@ -277,6 +277,7 @@ function ParamInput({
 }) {
     const isGeneratedEnum = param.options && param.options.length > 0;
     const isInlineEnum = !isGeneratedEnum && /^"[^"]*"(\s*\|\s*"[^"]*")+$/.test(param.type);
+    const isStructured = isStructuredType(param.type);
 
     const isEnum = isGeneratedEnum || isInlineEnum;
     const enumValues = isGeneratedEnum
@@ -328,13 +329,24 @@ function ParamInput({
                     </Combobox>
                 </div>
             ) : (
-                <input
-                    type="text"
-                    value={String(value ?? '')}
-                    onChange={(e) => onChange(e.target.value)}
-                    placeholder={getPlaceholder(param)}
-                    className="w-full rounded border border-fd-border bg-fd-background px-2 py-1.5 text-sm font-mono mt-2"
-                />
+                isStructured ? (
+                    <textarea
+                        value={stringifyParamValueForEditor(value)}
+                        onChange={(e) => onChange(e.target.value)}
+                        placeholder={getPlaceholder(param)}
+                        rows={8}
+                        spellCheck={false}
+                        className="w-full rounded border border-fd-border bg-fd-background px-2 py-1.5 text-sm font-mono mt-2 resize-y"
+                    />
+                ) : (
+                    <input
+                        type="text"
+                        value={String(value ?? '')}
+                        onChange={(e) => onChange(e.target.value)}
+                        placeholder={getPlaceholder(param)}
+                        className="w-full rounded border border-fd-border bg-fd-background px-2 py-1.5 text-sm font-mono mt-2"
+                    />
+                )
             )}
         </div>
     );
@@ -477,6 +489,26 @@ function getPlaceholder(param: ParameterData): string {
     if (/\[\]$/.test(t) || /\bArray</.test(t)) return '["item1", "item2"]';
     if (/\{/.test(t) || /Record</.test(t)) return '{"key": "value"}';
     return `Enter ${n}`;
+}
+
+function isStructuredType(type: string): boolean {
+    return (
+        /\[\]$/.test(type) ||
+        /\bArray</.test(type) ||
+        /\{/.test(type) ||
+        /\bRecord</.test(type) ||
+        /^[A-Z][A-Za-z0-9_]*$/.test(type)
+    );
+}
+
+function stringifyParamValueForEditor(value: ParamValue): string {
+    if (typeof value === 'string') return value;
+    if (value === null || value === undefined) return '';
+    try {
+        return JSON.stringify(value, null, 2);
+    } catch {
+        return String(value);
+    }
 }
 
 function parseParamValue(value: ParamValue, type: string): unknown {
