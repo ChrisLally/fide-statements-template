@@ -60,7 +60,7 @@ jobs:
           for line in "${lines[@]}"; do
             status="$(awk '{print $1}' <<<"${line}")"
             path="$(awk '{print $2}' <<<"${line}")"
-            if [[ "${path}" != *.jsonl ]]; then
+            if [[ "${path}" != *.json ]]; then
               continue
             fi
             if [ "${status}" = "A" ]; then
@@ -100,6 +100,7 @@ jobs:
           REKOR_V2_URL: https://log2025-1.rekor.sigstore.dev
           TSA_URL: https://timestamp.sigstore.dev/api/v1/timestamp
           PROOF_WEBHOOK_URL: https://webhook.site/19378ebb-2919-4ec1-8c18-9573661101be
+          WORKFLOW_TEMP_DIR: .fide-temp-workflow
           CERT_ID_RE: ^https://github.com/${{ github.repository }}/.github/workflows/rekor-keyless-demo.yml@refs/heads/${{ github.ref_name }}$
         run: |
           set -euo pipefail
@@ -116,24 +117,30 @@ jobs:
 
           while IFS= read -r ATTESTATION_FILE; do
             [ -z "${ATTESTATION_FILE}" ] && continue
-            stamp="$(date -u +%Y-%m-%d-%H%M)"
-            short="$(basename "${ATTESTATION_FILE}" .jsonl | awk -F- '{print $NF}')"
+            base="$(basename "${ATTESTATION_FILE}")"
+            base_noext="${base%.json}"
+            stamp="$(date -u +%Y-%m-%dT%H-%M-%S.%3NZ)"
             outdir=".fide/rekor-proofs/$(date -u +%Y/%m/%d)"
             mkdir -p "${outdir}"
-            bundle="${outdir}/${stamp}-${short}.attestation.sigstore.json"
-            tsa="${outdir}/${stamp}-${short}.attestation.rfc3161.tsr"
-            rekor="${outdir}/${stamp}-${short}.attestation.rekor-v2.json"
-            cert_file="${outdir}/${stamp}-${short}.cert.pem"
-            envelope_file="${outdir}/${stamp}-${short}.envelope.json"
+            mkdir -p "${WORKFLOW_TEMP_DIR}"
+            tmpdir="${WORKFLOW_TEMP_DIR}/${stamp}--${base_noext}"
+            mkdir -p "${tmpdir}"
+            bundle="${outdir}/${base_noext}.sigstore.json"
+            tsa="${outdir}/${base_noext}.rfc3161.tsr"
+            rekor="${outdir}/${base_noext}.rekor-v2.json"
+            cert_file="${tmpdir}/cert.pem"
+            envelope_file="${tmpdir}/envelope.json"
+            payload_file="${tmpdir}/rekor_v2_payload.json"
+            predicate_file="${tmpdir}/predicate.json"
 
-            ATTESTATION_FILE="${ATTESTATION_FILE}" node -e "const fs=require('fs'); const p=process.env.ATTESTATION_FILE; const line=fs.readFileSync(p,'utf8').trim().split('\n')[0]; const a=JSON.parse(line); const pred={attestation:{m:a.m,u:a.u,r:a.r,s:a.s,t:a.t},source:{path:p}}; fs.writeFileSync('predicate.json', JSON.stringify(pred));"
+            ATTESTATION_FILE="${ATTESTATION_FILE}" PREDICATE_FILE="${predicate_file}" node -e "const fs=require('fs'); const p=process.env.ATTESTATION_FILE; const a=JSON.parse(fs.readFileSync(p,'utf8')); const pred={attestation:{m:a.m,u:a.u,r:a.r,s:a.s},source:{path:p}}; fs.writeFileSync(process.env.PREDICATE_FILE, JSON.stringify(pred));"
 
             cosign attest-blob \
               --yes \
               --tlog-upload=false \
               --timestamp-server-url "${TSA_URL}" \
               "${tsa_flag}" "${tsa}" \
-              --predicate predicate.json \
+              --predicate "${predicate_file}" \
               --type "${FCP_PREDICATE_TYPE}" \
               --bundle "${bundle}" \
               --output-certificate "${cert_file}" \
@@ -208,16 +215,16 @@ jobs:
                     }
                   ]
                 }
-              }' > rekor_v2_payload.json
+              }' > "${payload_file}"
 
-            http_code="$(curl -sS -o rekor_http_response.json -w "%{http_code}" -X POST \
+            http_code="$(curl -sS -o "${tmpdir}/rekor_http_response.json" -w "%{http_code}" -X POST \
               -H "Content-Type: application/json" \
               -H "Accept: application/json" \
-              --data @rekor_v2_payload.json \
+              --data @"${payload_file}" \
               "${REKOR_V2_URL}/api/v2/log/entries")"
             if [ "${http_code}" -lt 200 ] || [ "${http_code}" -ge 300 ]; then
               echo "Rekor v2 upload failed with HTTP ${http_code}"
-              cat rekor_http_response.json
+              cat "${tmpdir}/rekor_http_response.json"
               exit 1
             fi
 
@@ -229,17 +236,16 @@ jobs:
               --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
               "${ATTESTATION_FILE}"
 
-            cp rekor_http_response.json "${rekor}"
+            cp "${tmpdir}/rekor_http_response.json" "${rekor}"
             cp "${rekor}" ".fide/rekor-proofs/latest.rekor-v2.json"
             cp "${bundle}" ".fide/rekor-proofs/latest.attestation.sigstore.json"
             cp "${tsa}" ".fide/rekor-proofs/latest.attestation.rfc3161.tsr"
 
-            attestation_json="$(head -n 1 "${ATTESTATION_FILE}")"
+            attestation_json="$(cat "${ATTESTATION_FILE}")"
             attestation_m="$(jq -r '.m // empty' <<<"${attestation_json}")"
             attestation_u="$(jq -r '.u // empty' <<<"${attestation_json}")"
             attestation_r="$(jq -r '.r // empty' <<<"${attestation_json}")"
             attestation_s="$(jq -r '.s // empty' <<<"${attestation_json}")"
-            attestation_t="$(jq -r '.t // empty' <<<"${attestation_json}")"
 
             webhook_payload="$(jq -n \
               --arg repo "${{ github.repository }}" \
@@ -250,7 +256,6 @@ jobs:
               --arg attestationU "${attestation_u}" \
               --arg attestationR "${attestation_r}" \
               --arg attestationS "${attestation_s}" \
-              --arg attestationT "${attestation_t}" \
               --arg rekorFile "${rekor}" \
               --arg bundleFile "${bundle}" \
               --arg tsaFile "${tsa}" \
@@ -267,8 +272,7 @@ jobs:
                       m: $attestationM,
                       u: $attestationU,
                       r: $attestationR,
-                      s: $attestationS,
-                      t: $attestationT
+                      s: $attestationS
                     },
                     rekor: {
                       file: $rekorFile,
@@ -293,6 +297,7 @@ jobs:
             echo "Processed: ${ATTESTATION_FILE}"
             echo "  Rekor response: ${rekor}"
             echo "  Bundle: ${bundle}"
+            rm -rf "${tmpdir}"
           done <<< "${{ steps.changes.outputs.files }}"
 
       - name: Upload Rekor proof artifacts

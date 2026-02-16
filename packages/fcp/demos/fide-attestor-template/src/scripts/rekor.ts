@@ -1,8 +1,13 @@
 /**
+ * DEPRECATED
+ *
+ * Local Rekor submission is deprecated for this template.
+ * Use GitHub Actions workflow ".github/workflows/rekor-keyless-demo.yml" instead.
+ *
  * Submit latest FCP statement-attestation to Rekor v2 as DSSE/in-toto.
  *
  * Flow:
- * 1. Read latest .fide/statement-attestations/.../*.jsonl
+ * 1. Read latest .fide/statement-attestations/.../*.json
  * 2. Build in-toto Statement payload with explicit FCP predicate type
  * 3. Wrap payload in DSSE envelope and sign (ECDSA P-256)
  * 4. POST /api/v2/log/entries with dsseRequestV002
@@ -47,7 +52,6 @@ interface StatementAttestationLine {
   u: string;
   r: string;
   s: string;
-  t: string;
 }
 
 function bytesToBase64(bytes: Uint8Array): string {
@@ -65,16 +69,7 @@ function utcDatePartition(date: Date): string {
   return `${y}/${m}/${d}`;
 }
 
-function utcMinuteStamp(date: Date): string {
-  const y = date.getUTCFullYear();
-  const m = String(date.getUTCMonth() + 1).padStart(2, "0");
-  const d = String(date.getUTCDate()).padStart(2, "0");
-  const hh = String(date.getUTCHours()).padStart(2, "0");
-  const mm = String(date.getUTCMinutes()).padStart(2, "0");
-  return `${y}-${m}-${d}-${hh}${mm}`;
-}
-
-async function findLatestJsonl(basePath: string): Promise<string | null> {
+async function findLatestAttestation(basePath: string): Promise<string | null> {
   const files: string[] = [];
 
   async function walk(dir: string): Promise<void> {
@@ -90,7 +85,7 @@ async function findLatestJsonl(basePath: string): Promise<string | null> {
       const full = join(dir, entry.name);
       if (entry.isDirectory()) {
         await walk(full);
-      } else if (entry.isFile() && entry.name.endsWith(".jsonl")) {
+      } else if (entry.isFile() && entry.name.endsWith(".json")) {
         files.push(full);
       }
     }
@@ -100,15 +95,6 @@ async function findLatestJsonl(basePath: string): Promise<string | null> {
   if (files.length === 0) return null;
   files.sort();
   return files[files.length - 1]!;
-}
-
-function parseAttestationShortFromFilename(path: string, fallbackRoot: string): string {
-  const name = basename(path, ".jsonl");
-  const idx = name.lastIndexOf("-");
-  if (idx >= 0 && idx + 1 < name.length) {
-    return name.slice(idx + 1);
-  }
-  return fallbackRoot.slice(0, 12);
 }
 
 function makeDSSEPAE(payloadType: string, payloadBytes: Uint8Array): Buffer {
@@ -127,10 +113,17 @@ function makeDSSEPAE(payloadType: string, payloadBytes: Uint8Array): Buffer {
 }
 
 async function main() {
+  console.error(
+    "DEPRECATED: local rekor.ts disabled. Use GitHub Actions workflow ".concat(
+      '".github/workflows/rekor-keyless-demo.yml".'
+    )
+  );
+  process.exit(1);
+
   console.log("📡 Rekor submit (v2 DSSE/in-toto) from latest statement-attestation\n");
   console.log("   Rekor URL:", REKOR_ENTRIES_URL);
 
-  const latestPath = await findLatestJsonl(STATEMENT_ATTESTATIONS_PATH);
+  const latestPath = await findLatestAttestation(STATEMENT_ATTESTATIONS_PATH);
   if (!latestPath) {
     console.log("ℹ No statement-attestations found.");
     console.log("  Run: pnpm --filter fide-attestor-template seed");
@@ -142,9 +135,7 @@ async function main() {
   if (!artifactText) {
     throw new Error(`Latest attestation file is empty: ${latestPath}`);
   }
-
-  const firstLine = artifactText.split("\n")[0]!;
-  const attestation = JSON.parse(firstLine) as StatementAttestationLine;
+  const attestation = JSON.parse(artifactText) as StatementAttestationLine;
 
   const artifactDigestBytes = createHash("sha256").update(artifactBytes).digest();
   const artifactDigestHex = bytesToHex(artifactDigestBytes);
@@ -180,7 +171,6 @@ async function main() {
         u: attestation.u,
         r: attestation.r,
         s: attestation.s,
-        t: attestation.t,
       },
       source: {
         path: latestPath,
@@ -248,8 +238,11 @@ async function main() {
   const outDir = join(REKOR_PROOFS_PATH, utcDatePartition(now));
   await mkdir(outDir, { recursive: true });
 
-  const shortId = parseAttestationShortFromFilename(latestPath, attestation.r);
-  const outFile = join(outDir, `${utcMinuteStamp(now)}-${shortId}.json`);
+  const attestationBase = basename(latestPath, ".json");
+  const outFile = join(
+    outDir,
+    `${attestationBase}.rekor-v2.json`
+  );
   const latestFile = join(REKOR_PROOFS_PATH, "latest.json");
 
   const proofRecord = {

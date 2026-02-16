@@ -5,7 +5,7 @@
  *
  * Output:
  * - .fide/statements/YYYY/MM/DD/{merkleRoot}.jsonl
- * - .fide/statement-attestations/YYYY/MM/DD/{YYYY-MM-DD-HHmm}-{attestationShortId}.jsonl
+ * - .fide/statement-attestations/YYYY/MM/DD/{UTC-time}--{attestationFideId}.json
  *
  * Usage: pnpm seed
  */
@@ -52,18 +52,18 @@ function getUTCDatePartition(date: Date): string {
   return `${year}/${month}/${day}`;
 }
 
-function getUTCMinuteStamp(date: Date): string {
-  const year = date.getUTCFullYear();
-  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
-  const day = String(date.getUTCDate()).padStart(2, "0");
-  const hours = String(date.getUTCHours()).padStart(2, "0");
-  const minutes = String(date.getUTCMinutes()).padStart(2, "0");
-  return `${year}-${month}-${day}-${hours}${minutes}`;
+function utcTimestampForFileName(date: Date): string {
+  // T01-29-21.915Z (date comes from folder partition)
+  return `T${String(date.getUTCHours()).padStart(2, "0")}-${String(
+    date.getUTCMinutes()
+  ).padStart(2, "0")}-${String(date.getUTCSeconds()).padStart(2, "0")}.${String(
+    date.getUTCMilliseconds()
+  ).padStart(3, "0")}Z`;
 }
 
-function getAttestationShortId(attestationFideId: string): string {
-  const hex = attestationFideId.replace(/^did:fide:0x/, "");
-  return hex.slice(0, 12);
+function safeDidForFileName(did: string): string {
+  // Keep deterministic + portable path chars
+  return did.replace(/[^A-Za-z0-9._-]/g, "_");
 }
 
 /** Evaluation method GitHub URLs → method names (0xe5 Product-sourced) */
@@ -310,9 +310,8 @@ async function main() {
   console.log(`✓ Attestation created (${attestation.attestationFideId.slice(0, 20)}...)`);
 
   // 4. Format outputs and write
-  const signedAt = new Date().toISOString();
-  const now = new Date();
-  const datePartition = getUTCDatePartition(now);
+  const signedAt = new Date();
+  const datePartition = getUTCDatePartition(signedAt);
   const statementLines = statements
     .map((s) =>
       JSON.stringify({
@@ -331,21 +330,20 @@ async function main() {
   await mkdir(statementsDir, { recursive: true });
   await writeFile(statementsPath, `${statementLines}\n`, "utf-8");
 
-  const attestationLine = JSON.stringify({
+  const attestationObject = {
     m: attestation.attestationData.m,
     u: attestation.attestationData.u,
     r: attestation.merkleRoot,
     s: attestation.attestationData.s,
-    t: signedAt,
-  });
+  };
 
   const attestationDir = join(STATEMENT_ATTESTATIONS_PATH, datePartition);
-  const attestationFilename = `${getUTCMinuteStamp(now)}-${getAttestationShortId(
+  const attestationFilename = `${utcTimestampForFileName(signedAt)}--${safeDidForFileName(
     attestation.attestationFideId
-  )}.jsonl`;
+  )}.json`;
   const attestationPath = join(attestationDir, attestationFilename);
   await mkdir(attestationDir, { recursive: true });
-  await writeFile(attestationPath, `${attestationLine}\n`, "utf-8");
+  await writeFile(attestationPath, `${JSON.stringify(attestationObject, null, 2)}\n`, "utf-8");
 
   await mkdir(join(REKOR_PROOFS_PATH, datePartition), { recursive: true });
 

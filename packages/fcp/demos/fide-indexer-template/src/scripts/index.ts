@@ -72,7 +72,6 @@ interface JSONLStatementAttestation {
   u: string;
   r: string;
   s: string;
-  t: string;
 }
 
 interface HydratedAttestation {
@@ -184,11 +183,6 @@ function isHex(value: string, minLen = 1): boolean {
   return value.length >= minLen && /^[a-fA-F0-9]+$/.test(value);
 }
 
-function isIsoUtc(value: string): boolean {
-  const d = new Date(value);
-  return !Number.isNaN(d.getTime()) && value.includes("T");
-}
-
 function validateStatementSchema(stmt: IndexedStatement): string | null {
   if (!stmt.s?.startsWith("did:fide:0x")) return "statement.s must be did:fide:0x...";
   if (!stmt.p?.startsWith("did:fide:0x")) return "statement.p must be did:fide:0x...";
@@ -205,7 +199,6 @@ function validateAttestationSchema(a: JSONLStatementAttestation): string | null 
   if (typeof a.u !== "string" || !a.u.includes(":")) return "attestation.u must be CAIP-10-like";
   if (!isHex(a.r, 64)) return "attestation.r must be hex merkle root";
   if (!isHex(a.s, 16)) return "attestation.s must be hex signature";
-  if (!isIsoUtc(a.t)) return "attestation.t must be ISO timestamp";
   return null;
 }
 
@@ -395,7 +388,7 @@ async function ingestFilesystemAttestations(
       const full = join(dir, ent.name);
       if (ent.isDirectory()) {
         await walk(full);
-      } else if (ent.name.endsWith(".jsonl")) {
+      } else if (ent.name.endsWith(".jsonl") || ent.name.endsWith(".json")) {
         filePaths.push(full);
       }
     }
@@ -412,18 +405,33 @@ async function ingestFilesystemAttestations(
   const attestations: JSONLStatementAttestation[] = [];
   let invalidAttestations = 0;
   const content = await readFile(latestPath, "utf-8");
-  for (const line of content.trim().split("\n")) {
-    if (!line) continue;
+  const isJsonObjectFile = latestPath.endsWith(".json");
+  if (isJsonObjectFile) {
     try {
-      const parsed = JSON.parse(line) as JSONLStatementAttestation;
+      const parsed = JSON.parse(content) as JSONLStatementAttestation;
       const schemaError = validateAttestationSchema(parsed);
       if (schemaError) {
         invalidAttestations++;
-        continue;
+      } else {
+        attestations.push(parsed);
       }
-      attestations.push(parsed);
     } catch {
-      // skip malformed lines
+      invalidAttestations++;
+    }
+  } else {
+    for (const line of content.trim().split("\n")) {
+      if (!line) continue;
+      try {
+        const parsed = JSON.parse(line) as JSONLStatementAttestation;
+        const schemaError = validateAttestationSchema(parsed);
+        if (schemaError) {
+          invalidAttestations++;
+          continue;
+        }
+        attestations.push(parsed);
+      } catch {
+        // skip malformed lines
+      }
     }
   }
   if (invalidAttestations > 0) {
