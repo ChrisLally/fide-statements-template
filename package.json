@@ -5,6 +5,8 @@
     "build": "turbo run build",
     "build:api:prod": "pnpm --filter @fide.work/fcp build && pnpm --filter @fide.work/db build && pnpm --filter @fide.work/graph build && pnpm --filter @fide.work/indexer build && pnpm --filter api build:local",
     "build:docs:prod": "pnpm --filter @fide.work/fcp build && pnpm --filter docs build",
+    "deploy:api:cf": "pnpm --filter api run deploy:cf",
+    "deploy:api:cf:dry-run": "pnpm --filter api run deploy:cf:dry-run",
     "sdk:generate": "pnpm --filter docs sdk:generate",
     "dev": "turbo run dev",
     "lint": "turbo run lint",

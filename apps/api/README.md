@@ -30,6 +30,34 @@ pnpm run build:api:prod
 
 - Local Node runtime: `src/index.ts`
 - Vercel runtime: `api/[...route].ts`
+- Cloudflare Worker runtime: `src/worker.ts`
+
+## Cloudflare Deploy
+
+From `apps/api`:
+
+```bash
+pnpm install
+pnpm run deploy:cf
+```
+
+For local Worker dev:
+
+```bash
+pnpm run dev:cf
+```
+
+Set secrets/vars in Cloudflare before deploy:
+
+```bash
+wrangler secret put DATABASE_URL
+```
+
+Optional feature flag:
+
+```bash
+wrangler secret put GRAPH_API_V1_ENABLED
+```
 
 ## Environment
 
