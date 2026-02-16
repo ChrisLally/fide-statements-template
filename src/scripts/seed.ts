@@ -32,6 +32,7 @@ function getUTCDatePartition(date: Date): string {
 
 async function main() {
   console.log("🌱 Seeding statements-only batch...\n");
+  const runIso = new Date().toISOString();
 
   const statements = await buildStatementBatch([
     {
@@ -66,6 +67,24 @@ async function main() {
         rawIdentifier: "https://x.com/microsoft",
         entityType: "Organization",
         sourceType: "Product",
+      },
+    },
+    {
+      // Run marker so each seed invocation produces a unique Merkle root.
+      subject: {
+        rawIdentifier: `urn:fide:seed-run:${runIso}`,
+        entityType: "CreativeWork",
+        sourceType: "CreativeWork",
+      },
+      predicate: {
+        rawIdentifier: SCHEMA_PREDICATES.name,
+        entityType: "CreativeWork",
+        sourceType: "Product",
+      },
+      object: {
+        rawIdentifier: runIso,
+        entityType: "CreativeWork",
+        sourceType: "CreativeWork",
       },
     },
   ]);
@@ -105,6 +124,7 @@ async function main() {
   await writeFile(outPath, `${lines}\n`, "utf8");
 
   console.log(`✓ Created ${statements.length} statements`);
+  console.log(`✓ Seed run marker: ${runIso}`);
   console.log(`✓ Merkle root: ${root}`);
   console.log(`✓ Wrote: ${outPath}`);
 }

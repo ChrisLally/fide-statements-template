@@ -112,9 +112,20 @@ jobs:
             --argjson items "${items}" \
             '{repo:$repo, sha:$sha, runId:$runId, items:$items}')"
 
-          curl -sS -X POST \
+          webhook_resp_file="$(mktemp)"
+          webhook_status="$(curl -sS -o "${webhook_resp_file}" -w "%{http_code}" -X POST \
             -H "Content-Type: application/json" \
             --data "${payload}" \
-            "${WEBHOOK_URL}" >/dev/null
+            "${WEBHOOK_URL}")"
+
+          echo "Webhook URL: ${WEBHOOK_URL}"
+          echo "Webhook status: ${webhook_status}"
+          echo "Webhook response body:"
+          cat "${webhook_resp_file}"
+
+          if [ "${webhook_status}" -lt 200 ] || [ "${webhook_status}" -ge 300 ]; then
+            echo "Webhook request failed with HTTP ${webhook_status}"
+            exit 1
+          fi
 
           echo "Webhook notified with $(jq -r 'length' <<<"${items}") item(s)."
