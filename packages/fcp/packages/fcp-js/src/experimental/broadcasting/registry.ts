@@ -71,7 +71,7 @@ export interface JSONLAttestation {
  * 
  * @example
  * ```ts
- * const { statements } = await buildStatementBatchWithRoot([...]);
+ * const { statements } = await batchStatementsWithRoot([...]);
  * const attestation = await createAttestation(statementFideIds, options);
  * const jsonlAttestation = formatAttestationForJSONL(attestation, statements);
  * 

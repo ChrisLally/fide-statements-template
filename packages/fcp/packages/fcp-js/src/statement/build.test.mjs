@@ -1,6 +1,6 @@
 import {
     createStatement,
-    buildStatementBatchWithRoot
+    batchStatementsWithRoot
 } from "../../dist/index.js";
 
 console.log("📝 Testing Statement Building Helpers\n");
@@ -41,10 +41,10 @@ try {
 }
 
 // Test 2: Build statement batch with root
-console.log("\n2. Testing buildStatementBatchWithRoot...");
+console.log("\n2. Testing batchStatementsWithRoot...");
 checks += 1;
 try {
-    const { statements, statementFideIds, root } = await buildStatementBatchWithRoot([
+    const { statements, statementFideIds, root } = await batchStatementsWithRoot([
         {
             subject: { rawIdentifier: 'https://x.com/alice', entityType: 'Person', sourceType: 'Product' },
             predicate: { rawIdentifier: 'https://schema.org/name', entityType: 'CreativeWork', sourceType: 'Product' },

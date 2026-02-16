@@ -14,11 +14,8 @@ export { calculateFideId, calculateStatementFideId } from "./fide-id/index.js";
 
 // Utility functions
 export {
-    isValidFideId,
-    extractFideIdFingerprint,
-    extractFideIdTypeAndSource,
+    assertFideId,
     parseFideId,
-    getStatementRawIdentifier
 } from "./fide-id/index.js";
 
 // Constants
@@ -48,7 +45,7 @@ export type {
 
 export {
     createStatement,
-    buildStatementBatchWithRoot,
+    batchStatementsWithRoot,
     type StatementInput,
     type Statement,
     type StatementBatchWithRoot

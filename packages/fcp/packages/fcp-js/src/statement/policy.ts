@@ -1,4 +1,4 @@
-import { extractFideIdTypeAndSource } from "../fide-id/index.js";
+import { assertFideId, parseFideId } from "../fide-id/index.js";
 import type { StatementInput } from "./build.js";
 
 function describeValue(value: unknown): string {
@@ -126,7 +126,8 @@ export function assertStatementFideIdsPolicy(
 }
 
 function assertRoleFideIdPolicy(fideId: string, role: "subject" | "object"): void {
-    const { typeChar, sourceChar } = extractFideIdTypeAndSource(fideId);
+    assertFideId(fideId);
+    const { typeChar, sourceChar } = parseFideId(fideId);
 
     if (sourceChar !== "0") return;
     if (typeChar === "0") return;

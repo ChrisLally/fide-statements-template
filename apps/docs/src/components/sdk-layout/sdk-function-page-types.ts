@@ -14,6 +14,7 @@ export type SignatureData = {
     returnDescription: string;
     exampleCode?: string;
     infoCallout?: { title: string; body: string };
+    referencedTypes?: ReferencedType[];
 };
 
 export type ConstantData = {

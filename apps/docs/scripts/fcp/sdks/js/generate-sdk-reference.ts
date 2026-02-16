@@ -102,9 +102,19 @@ function extractReferencedType(
   const typeText = checker.typeToString(type, decl, ts.TypeFormatFlags.NoTruncation);
   const docsUrl = extractDocsUrlFromSymbol(symbol, symbol.getDeclarations()?.[0]);
 
-  // If it's a union of literal types, we want to show it
-  // If it's an object-like type, try to extract properties
-  const entries = extractPropertiesFromType(checker, type, decl);
+  // For literal/union-literal aliases (e.g. "CreativeWork" or "A" | "B"),
+  // do not extract String prototype members as "properties".
+  const typeTextIsLiteralUnion = /^"[^"]+"(\s*\|\s*"[^"]+")*$/.test(typeText.trim()) ||
+    /^-?\d+(\s*\|\s*-?\d+)*$/.test(typeText.trim());
+  const isTemplateLiteralLike = typeText.includes('${') || /did:fide:0x/.test(typeText);
+  const isUnionOfLiterals =
+    type.isUnion?.() &&
+    (type as ts.UnionType).types?.every((t) => t.isStringLiteral() || t.isNumberLiteral());
+  const isSingleLiteral = type.isStringLiteral?.() || type.isNumberLiteral?.();
+  const isFideIdAlias = name === 'FideId';
+  const entries = isFideIdAlias || isUnionOfLiterals || isSingleLiteral || typeTextIsLiteralUnion || isTemplateLiteralLike
+    ? undefined
+    : extractPropertiesFromType(checker, type, decl);
 
   return {
     name,
@@ -143,10 +153,17 @@ function resolveReferencedTypeByName(
 
   // Don't extract "properties" for union-of-literals types (e.g. FideEntityType) — they
   // would incorrectly include String/Number prototype methods
+  const typeTextIsLiteralUnion = /^"[^"]+"(\s*\|\s*"[^"]+")*$/.test(typeText.trim()) ||
+    /^-?\d+(\s*\|\s*-?\d+)*$/.test(typeText.trim());
+  const isTemplateLiteralLike = typeText.includes('${') || /did:fide:0x/.test(typeText);
   const isUnionOfLiterals =
     type.isUnion?.() &&
     (type as ts.UnionType).types?.every((t) => t.isStringLiteral() || t.isNumberLiteral());
-  const entries = isUnionOfLiterals ? undefined : extractPropertiesFromType(checker, type, decl);
+  const isSingleLiteral = type.isStringLiteral?.() || type.isNumberLiteral?.();
+  const isFideIdAlias = typeName === 'FideId';
+  const entries = isFideIdAlias || isUnionOfLiterals || isSingleLiteral || typeTextIsLiteralUnion || isTemplateLiteralLike
+    ? undefined
+    : extractPropertiesFromType(checker, type, decl);
 
   return {
     name: typeName,
@@ -161,6 +178,19 @@ function resolveReferencedTypeByName(
 function extractTypeNamesFromTypeString(typeStr: string): string[] {
   const matches = typeStr.match(/\b([A-Z][a-zA-Z0-9]*)\b/g) ?? [];
   return [...new Set(matches)].filter((n) => !PRIMITIVE_AND_SKIP.has(n));
+}
+
+function extractTypeNamesFromEntries(
+  entries?: Record<string, { description: string; type: string; required: boolean }>
+): string[] {
+  if (!entries) return [];
+  const names = new Set<string>();
+  for (const entry of Object.values(entries)) {
+    for (const name of extractTypeNamesFromTypeString(entry.type)) {
+      names.add(name);
+    }
+  }
+  return [...names];
 }
 
 // ============================================================================
@@ -391,6 +421,22 @@ function buildExportDetailsByName(): Map<string, ExportDetails> {
           }
         };
 
+        const expandReferencedTypesRecursively = () => {
+          let changed = true;
+          while (changed) {
+            changed = false;
+            const snapshot = [...referencedTypes];
+            for (const ref of snapshot) {
+              for (const nestedName of extractTypeNamesFromEntries(ref.entries)) {
+                if (seenTypes.has(nestedName)) continue;
+                const before = seenTypes.size;
+                addTypeByName(nestedName);
+                if (seenTypes.size > before) changed = true;
+              }
+            }
+          }
+        };
+
         // Extract parameters
         const params: ParameterData[] = signature.getParameters().map((paramSymbol) => {
           const paramDecl = paramSymbol.valueDeclaration ?? paramSymbol.declarations?.[0];
@@ -436,6 +482,10 @@ function buildExportDetailsByName(): Map<string, ExportDetails> {
             } else if (parts.every((p) => p.isNumberLiteral())) {
               options = parts.map((p) => String((p as ts.NumberLiteralType).value));
             }
+          } else if (paramTypeSymbol.isStringLiteral?.()) {
+            options = [paramTypeSymbol.value];
+          } else if (paramTypeSymbol.isNumberLiteral?.()) {
+            options = [String(paramTypeSymbol.value)];
           }
 
           return {
@@ -455,6 +505,9 @@ function buildExportDetailsByName(): Map<string, ExportDetails> {
         for (const name of extractTypeNamesFromTypeString(returnTypeStr)) {
           addTypeByName(name);
         }
+
+        // Ensure nested field types (e.g. entries inside StatementInput) are included too.
+        expandReferencedTypesRecursively();
 
         const exampleTag = tags.find((tag) => tag.name === 'example');
         let exampleCode: string | undefined;

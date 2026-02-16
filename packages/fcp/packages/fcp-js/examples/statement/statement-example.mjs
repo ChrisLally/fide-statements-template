@@ -1,6 +1,6 @@
 import {
     createStatement,
-    buildStatementBatchWithRoot
+    batchStatementsWithRoot
 } from "../../dist/index.js";
 
 console.log("📝 Statement Building Example\n");
@@ -20,7 +20,7 @@ console.log("   Statement Fide ID:", statement1.statementFideId?.slice(0, 30) + 
 
 // Example 2: Build a batch of statements
 console.log("2. Building batch of statements...");
-const { statements, statementFideIds, root } = await buildStatementBatchWithRoot([
+const { statements, statementFideIds, root } = await batchStatementsWithRoot([
     {
         subject: { rawIdentifier: 'https://x.com/alice', entityType: 'Person', sourceType: 'Product' },
         predicate: { rawIdentifier: 'https://schema.org/name', entityType: 'CreativeWork', sourceType: 'Product' },

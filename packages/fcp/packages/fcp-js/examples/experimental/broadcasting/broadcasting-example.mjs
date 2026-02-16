@@ -1,5 +1,5 @@
 import {
-    buildStatementBatchWithRoot
+    batchStatementsWithRoot
 } from "../../../dist/index.js";
 import {
     createAttestation
@@ -107,7 +107,7 @@ async function determineNextSequence(directoryPath, date, maxFileSizeBytes = 50 
 
 // Step 1: Create statements
 console.log("1. Creating statements...");
-const { statements, statementFideIds, root } = await buildStatementBatchWithRoot([
+const { statements, statementFideIds, root } = await batchStatementsWithRoot([
     {
         subject: { rawIdentifier: 'https://x.com/alice', entityType: 'Person', sourceType: 'Product' },
         predicate: { rawIdentifier: 'https://schema.org/name', entityType: 'CreativeWork', sourceType: 'Product' },

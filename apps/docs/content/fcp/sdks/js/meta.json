@@ -7,15 +7,12 @@
   "pages": [
     "index",
     "--- FIDE ID ---",
+    "assert-fide-id",
     "calculate-fide-id",
     "calculate-statement-fide-id",
-    "extract-fide-id-fingerprint",
-    "extract-fide-id-type-and-source",
-    "get-statement-raw-identifier",
-    "is-valid-fide-id",
     "parse-fide-id",
     "--- Statement ---",
-    "build-statement-batch-with-root",
+    "batch-statements-with-root",
     "create-statement"
   ]
 }

@@ -10,11 +10,8 @@ export { calculateStatementFideId } from "./calculateStatementFideId.js";
 
 // Utility functions
 export {
-    isValidFideId,
-    extractFideIdFingerprint,
-    extractFideIdTypeAndSource,
+    assertFideId,
     parseFideId,
-    getStatementRawIdentifier
 } from "./utils.js";
 
 // Constants

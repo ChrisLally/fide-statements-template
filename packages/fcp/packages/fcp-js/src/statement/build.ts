@@ -148,7 +148,7 @@ export async function createStatement(input: StatementInput): Promise<Statement>
  * @returns Statements, statement IDs (input order), and deterministic root hash
  * @throws Error if one or more built statements are missing `statementFideId`
  */
-export async function buildStatementBatchWithRoot(inputs: StatementInput[]): Promise<StatementBatchWithRoot> {
+export async function batchStatementsWithRoot(inputs: StatementInput[]): Promise<StatementBatchWithRoot> {
     const statements = await Promise.all(inputs.map((input) => createStatement(input)));
     const statementFideIds = statements
         .map((s) => s.statementFideId)

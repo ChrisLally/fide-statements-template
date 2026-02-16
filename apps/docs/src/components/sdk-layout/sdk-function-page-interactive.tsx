@@ -59,6 +59,7 @@ export function SDKFunctionPageInteractive({ data }: { data: SDKFunctionPageData
                 <InteractiveSignatureSection
                     key={i}
                     signature={sig}
+                    referencedTypes={sig.referencedTypes ?? data.referencedTypes ?? []}
                     functionName={data.name}
                     functionDescription={data.description}
                     index={i}
@@ -79,12 +80,14 @@ export function SDKFunctionPageInteractive({ data }: { data: SDKFunctionPageData
 
 function InteractiveSignatureSection({
     signature,
+    referencedTypes,
     functionName,
     functionDescription,
     index,
     total,
 }: {
     signature: SignatureData;
+    referencedTypes: ReferencedType[];
     functionName: string;
     functionDescription: string;
     index: number;
@@ -93,7 +96,7 @@ function InteractiveSignatureSection({
     const [paramValues, setParamValues] = useState<Record<string, ParamValue>>(() => {
         const initial: Record<string, ParamValue> = {};
         for (const param of signature.parameters) {
-            initial[param.name] = param.example ?? getDefaultValue(param);
+            initial[param.name] = getInitialParamValue(param);
         }
         return initial;
     });
@@ -200,6 +203,7 @@ function InteractiveSignatureSection({
                                     <ParamInput
                                         key={param.name}
                                         param={param}
+                                        typeIndex={buildReferencedTypeIndex(referencedTypes)}
                                         value={paramValues[param.name]}
                                         onChange={(val) => handleParamChange(param.name, val)}
                                     />
@@ -268,16 +272,19 @@ function InteractiveSignatureSection({
 
 function ParamInput({
     param,
+    typeIndex,
     value,
     onChange,
 }: {
     param: ParameterData;
+    typeIndex: Map<string, ReferencedType>;
     value: ParamValue;
     onChange: (value: ParamValue) => void;
 }) {
     const isGeneratedEnum = param.options && param.options.length > 0;
     const isInlineEnum = !isGeneratedEnum && /^"[^"]*"(\s*\|\s*"[^"]*")+$/.test(param.type);
     const isStructured = isStructuredType(param.type);
+    const [structuredMode, setStructuredMode] = useState<'form' | 'json'>('form');
 
     const isEnum = isGeneratedEnum || isInlineEnum;
     const enumValues = isGeneratedEnum
@@ -285,6 +292,9 @@ function ParamInput({
         : isInlineEnum
             ? param.type.split('|').map((v) => v.trim().replace(/^"|"$/g, ''))
             : [];
+    const structuredValue = toStructuredObject(value, param.type);
+    const rootEntries = resolveTypeEntries(param.type, typeIndex);
+    const canUseForm = isStructured && Boolean(rootEntries);
 
     return (
         <div className="rounded-md border border-fd-border bg-fd-background p-3">
@@ -330,14 +340,47 @@ function ParamInput({
                 </div>
             ) : (
                 isStructured ? (
-                    <textarea
-                        value={stringifyParamValueForEditor(value)}
-                        onChange={(e) => onChange(e.target.value)}
-                        placeholder={getPlaceholder(param)}
-                        rows={8}
-                        spellCheck={false}
-                        className="w-full rounded border border-fd-border bg-fd-background px-2 py-1.5 text-sm font-mono mt-2 resize-y"
-                    />
+                    <>
+                        {canUseForm && (
+                            <div className="mt-2 mb-2 flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setStructuredMode('form')}
+                                    className={`px-2 py-1 text-xs rounded border ${structuredMode === 'form' ? 'bg-fd-accent border-fd-border' : 'border-fd-border text-fd-muted-foreground'}`}
+                                >
+                                    Form
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setStructuredMode('json')}
+                                    className={`px-2 py-1 text-xs rounded border ${structuredMode === 'json' ? 'bg-fd-accent border-fd-border' : 'border-fd-border text-fd-muted-foreground'}`}
+                                >
+                                    JSON
+                                </button>
+                            </div>
+                        )}
+                        {!canUseForm || structuredMode === 'json' ? (
+                            <textarea
+                                value={stringifyParamValueForEditor(value)}
+                                onChange={(e) => onChange(e.target.value)}
+                                placeholder={getPlaceholder(param)}
+                                rows={8}
+                                spellCheck={false}
+                                className="w-full rounded border border-fd-border bg-fd-background px-2 py-1.5 text-sm font-mono mt-2 resize-y"
+                            />
+                        ) : structuredValue && rootEntries ? (
+                            <StructuredSchemaEditor
+                                value={structuredValue}
+                                entries={rootEntries}
+                                typeIndex={typeIndex}
+                                onChange={(next) => onChange(next)}
+                            />
+                        ) : (
+                            <div className="mt-2 text-xs text-fd-muted-foreground">
+                                Invalid structured input. Switch to JSON mode to fix parse errors.
+                            </div>
+                        )}
+                    </>
                 ) : (
                     <input
                         type="text"
@@ -348,6 +391,149 @@ function ParamInput({
                     />
                 )
             )}
+            {isFideIdLikeType(param.type) && typeof value === 'string' && value.trim() !== '' && !isValidFideIdValue(value) && (
+                <div className="mt-1 text-xs text-red-500">
+                    Invalid Fide ID format. Expected <code>did:fide:0x</code> + 40 hex chars.
+                </div>
+            )}
+        </div>
+    );
+}
+
+function StructuredSchemaEditor({
+    value,
+    entries,
+    typeIndex,
+    onChange,
+}: {
+    value: Record<string, unknown>;
+    entries: Record<string, { description: string; type: string; required: boolean }>;
+    typeIndex: Map<string, ReferencedType>;
+    onChange: (value: Record<string, unknown>) => void;
+}) {
+    return (
+        <div className="mt-2 space-y-2">
+            {Object.entries(entries).map(([key, schema]) => {
+                const current = value[key];
+                const nestedEntries = resolveTypeEntries(schema.type, typeIndex);
+                if (nestedEntries) {
+                    const nestedValue =
+                        current && typeof current === 'object' && !Array.isArray(current)
+                            ? (current as Record<string, unknown>)
+                            : {};
+                    return (
+                        <div key={key} className="rounded border border-fd-border p-2">
+                            <div className="text-xs font-mono font-semibold mb-2">
+                                {key} {schema.required ? <span className="text-red-500">*</span> : null}
+                            </div>
+                            {schema.description ? (
+                                <div className="text-xs text-fd-muted-foreground mb-2">{schema.description}</div>
+                            ) : null}
+                            <StructuredSchemaEditor
+                                value={nestedValue}
+                                entries={nestedEntries}
+                                typeIndex={typeIndex}
+                                onChange={(nextNested) => {
+                                    onChange({
+                                        ...value,
+                                        [key]: nextNested,
+                                    });
+                                }}
+                            />
+                        </div>
+                    );
+                }
+
+                const unionOptions = resolveUnionOptions(schema.type, typeIndex);
+                if (unionOptions.length > 0) {
+                    return (
+                        <div key={key}>
+                            <div className="text-xs font-mono mb-1">
+                                {key} {schema.required ? <span className="text-red-500">*</span> : null}
+                            </div>
+                            <Combobox
+                                items={unionOptions}
+                                value={String(current ?? '')}
+                                onValueChange={(val) => {
+                                    onChange({
+                                        ...value,
+                                        [key]: val,
+                                    });
+                                }}
+                            >
+                                <ComboboxInput
+                                    placeholder="Select value..."
+                                    className="bg-fd-background"
+                                />
+                                <ComboboxContent className="z-[100] min-w-[var(--anchor-width)]">
+                                    <ComboboxEmpty>No items found.</ComboboxEmpty>
+                                    <ComboboxList>
+                                        {(enumVal) => (
+                                            <ComboboxItem key={enumVal} value={enumVal}>
+                                                {enumVal}
+                                            </ComboboxItem>
+                                        )}
+                                    </ComboboxList>
+                                </ComboboxContent>
+                            </Combobox>
+                        </div>
+                    );
+                }
+
+                if (Array.isArray(current)) {
+                    return (
+                        <div key={key}>
+                            <div className="text-xs font-mono mb-1">
+                                {key} {schema.required ? <span className="text-red-500">*</span> : null}
+                            </div>
+                            <textarea
+                                value={JSON.stringify(current, null, 2)}
+                                rows={4}
+                                spellCheck={false}
+                                onChange={(e) => {
+                                    try {
+                                        const parsed = JSON5.parse(e.target.value);
+                                        if (Array.isArray(parsed)) {
+                                            onChange({
+                                                ...value,
+                                                [key]: parsed,
+                                            });
+                                        }
+                                    } catch {
+                                        // Keep user typing without forcing parse errors.
+                                    }
+                                }}
+                                className="w-full rounded border border-fd-border bg-fd-background px-2 py-1.5 text-sm font-mono resize-y"
+                            />
+                        </div>
+                    );
+                }
+
+                const inputValue = current === null || current === undefined ? '' : String(current);
+                return (
+                    <div key={key}>
+                        <div className="text-xs font-mono mb-1">
+                            {key} {schema.required ? <span className="text-red-500">*</span> : null}
+                        </div>
+                        <input
+                            type="text"
+                            value={inputValue}
+                            onChange={(e) => {
+                                onChange({
+                                    ...value,
+                                    [key]: coerceByType(e.target.value, schema.type, current),
+                                });
+                            }}
+                            className="w-full rounded border border-fd-border bg-fd-background px-2 py-1.5 text-sm font-mono"
+                        />
+                        {isFideIdLikeType(schema.type) && inputValue.trim() !== '' && !isValidFideIdValue(inputValue) && (
+                            <div className="mt-1 text-xs text-red-500">
+                                Invalid Fide ID format. Expected <code>did:fide:0x</code> + 40 hex chars.
+                            </div>
+                        )}
+                    </div>
+                );
+            })}
         </div>
     );
 }
@@ -479,6 +665,14 @@ function getDefaultValue(param: ParameterData): ParamValue {
     return '';
 }
 
+function getInitialParamValue(param: ParameterData): ParamValue {
+    const raw = param.example ?? getDefaultValue(param);
+    if (isStructuredType(param.type)) {
+        return parseParamValue(raw, param.type) as ParamValue;
+    }
+    return raw;
+}
+
 function getPlaceholder(param: ParameterData): string {
     if (param.example) return `Example: ${param.example}`;
     const t = param.type;
@@ -492,6 +686,7 @@ function getPlaceholder(param: ParameterData): string {
 }
 
 function isStructuredType(type: string): boolean {
+    if (isFideIdLikeType(type)) return false;
     return (
         /\[\]$/.test(type) ||
         /\bArray</.test(type) ||
@@ -499,6 +694,73 @@ function isStructuredType(type: string): boolean {
         /\bRecord</.test(type) ||
         /^[A-Z][A-Za-z0-9_]*$/.test(type)
     );
+}
+
+function toStructuredObject(value: ParamValue, type: string): Record<string, unknown> | null {
+    const parsed = parseParamValue(value, type);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        return parsed as Record<string, unknown>;
+    }
+    return null;
+}
+
+function buildReferencedTypeIndex(types: ReferencedType[]): Map<string, ReferencedType> {
+    return new Map(types.map((t) => [t.name, t]));
+}
+
+function resolveTypeEntries(
+    type: string,
+    typeIndex: Map<string, ReferencedType>
+): Record<string, { description: string; type: string; required: boolean }> | undefined {
+    const named = typeIndex.get(type)?.entries;
+    if (named) return named;
+    return parseInlineObjectEntries(type);
+}
+
+function parseInlineObjectEntries(
+    type: string
+): Record<string, { description: string; type: string; required: boolean }> | undefined {
+    const trimmed = type.trim();
+    if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) return undefined;
+    const body = trimmed.slice(1, -1).trim();
+    if (!body) return {};
+    const fields = body.split(';').map((part) => part.trim()).filter(Boolean);
+    const result: Record<string, { description: string; type: string; required: boolean }> = {};
+    for (const field of fields) {
+        const match = field.match(/^([A-Za-z_$][A-Za-z0-9_$]*)(\??):\s*(.+)$/);
+        if (!match) continue;
+        const [, name, opt, fieldType] = match;
+        result[name] = {
+            description: '',
+            type: fieldType.trim(),
+            required: opt !== '?',
+        };
+    }
+    return Object.keys(result).length > 0 ? result : undefined;
+}
+
+function parseStringLiteralUnion(type: string): string[] {
+  const matches = [...type.matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+  if (matches.length === 0) return [];
+  const unionLike = /^"[^"]+"(\s*\|\s*"[^"]+")*$/.test(type.trim());
+  return unionLike ? [...new Set(matches)] : [];
+}
+
+function isFideIdLikeType(type: string): boolean {
+    return type === 'FideId' || /did:fide:0x/.test(type);
+}
+
+function isValidFideIdValue(value: string): boolean {
+    return /^did:fide:0x[0-9a-f]{40}$/i.test(value.trim());
+}
+
+function resolveUnionOptions(type: string, typeIndex: Map<string, ReferencedType>): string[] {
+    const inline = parseStringLiteralUnion(type);
+    if (inline.length > 0) return inline;
+
+    const referenced = typeIndex.get(type);
+    if (!referenced) return [];
+    return parseStringLiteralUnion(referenced.type);
 }
 
 function stringifyParamValueForEditor(value: ParamValue): string {
@@ -541,6 +803,19 @@ function parseParamValue(value: ParamValue, type: string): unknown {
     }
 
     return value;
+}
+
+function coerceByType(nextRaw: string, declaredType: string, previousValue: unknown): unknown {
+    if (typeof previousValue === 'boolean') {
+        if (nextRaw.toLowerCase() === 'true') return true;
+        if (nextRaw.toLowerCase() === 'false') return false;
+    }
+    if (typeof previousValue === 'number' || /\bnumber\b/.test(declaredType)) {
+        const n = Number(nextRaw);
+        if (!Number.isNaN(n)) return n;
+    }
+    if (previousValue === null && nextRaw.trim().toLowerCase() === 'null') return null;
+    return nextRaw;
 }
 
 function generateUsageExample(

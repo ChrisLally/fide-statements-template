@@ -1,5 +1,5 @@
 import {
-    buildStatementBatchWithRoot
+    batchStatementsWithRoot
 } from "../../../dist/index.js";
 import {
     createAttestation
@@ -144,7 +144,7 @@ console.log("📡 Broadcasting Example (EIP-712 with EAS Signer)\n");
 
 // Step 1: Create statements
 console.log("1. Creating statements...");
-const { statements, statementFideIds, root } = await buildStatementBatchWithRoot([
+const { statements, statementFideIds, root } = await batchStatementsWithRoot([
     {
         subject: { rawIdentifier: 'https://x.com/alice', entityType: 'Person', sourceType: 'Product' },
         predicate: { rawIdentifier: 'https://schema.org/name', entityType: 'CreativeWork', sourceType: 'Product' },

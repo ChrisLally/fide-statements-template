@@ -6,7 +6,7 @@
 
 export {
     createStatement,
-    buildStatementBatchWithRoot,
+    batchStatementsWithRoot,
     type StatementInput,
     type Statement,
     type StatementBatchWithRoot
