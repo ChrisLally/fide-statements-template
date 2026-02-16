@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
-import { parseGithubStatementsWebhookPayload, toSourceStatementBatchRefs } from '../index.js';
+import { processGithubWebhookPayload } from '../process-github-webhook.js';
+import { parseGithubStatementsWebhookPayload } from '../sources/github-webhook.js';
 
 async function main(): Promise<void> {
   const fixturePath = process.argv[2] ?? 'fixtures/mock-github-statements-webhook.json';
@@ -7,17 +8,14 @@ async function main(): Promise<void> {
   const payloadUnknown = JSON.parse(raw) as unknown;
 
   const payload = parseGithubStatementsWebhookPayload(payloadUnknown);
-  const refs = toSourceStatementBatchRefs(payload);
+  const results = await processGithubWebhookPayload(payload);
 
-  // This is the handoff point for the next stage:
-  // fetch each {repo, sha, path} file and ingest statement JSONL content.
   console.log(JSON.stringify({
     source: 'github-webhook',
     repo: payload.repo,
     sha: payload.sha,
     runId: payload.runId,
-    batchCount: refs.length,
-    batches: refs,
+    processed: results,
   }, null, 2));
 }
 

@@ -1,4 +1,10 @@
-// Graph package intentionally starts minimal.
-// Source-adapter concerns (repo/sha/path/webhook) live in @fide.work/indexer.
+export type {
+  StatementWire,
+  ParsedStatementBatch,
+  IngestJsonlBatchInput,
+  IngestBatchResult,
+} from './types.js';
 
-export {};
+export { calculateStatementBatchRoot } from './statement/batch-root.js';
+export { parseStatementBatchJsonl } from './statement/parse-batch-jsonl.js';
+export { applyStatementBatch } from './ingest/apply-statement-batch.js';
