@@ -49,7 +49,7 @@ async function main() {
     },
     {
       subject: {
-        rawIdentifier: "https://x.com/elonmusk",
+        rawIdentifier: "https://x.com/jeffbezos",
         entityType: "Person",
         sourceType: "Product",
       },
