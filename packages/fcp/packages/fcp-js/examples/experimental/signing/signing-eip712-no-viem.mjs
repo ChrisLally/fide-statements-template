@@ -5,7 +5,7 @@ console.log("Testing EIP-712 without viem installed...\n");
 
 try {
     // This will fail with a helpful error message if viem is not installed
-    const { signEip712 } = await import("../../dist/index.js");
+    const { signEip712 } = await import("../../../dist/experimental/signing/index.js");
     await signEip712("0x1234", "0x".padEnd(66, "1"));
     console.log("✅ viem is installed, EIP-712 functions work!");
 } catch (error) {

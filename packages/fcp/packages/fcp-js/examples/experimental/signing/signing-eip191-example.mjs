@@ -9,7 +9,7 @@ try {
     process.exit(0);
 }
 
-import { signEip191, verifyEip191 } from "../../dist/index.js";
+import { signEip191, verifyEip191 } from "../../../dist/experimental/signing/index.js";
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 
 console.log("✍️  EIP-191 Signing Example\n");

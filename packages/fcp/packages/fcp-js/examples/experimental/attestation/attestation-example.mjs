@@ -1,13 +1,17 @@
 import {
     calculateFideId,
-    calculateStatementFideId,
+    calculateStatementFideId
+} from "../../../dist/index.js";
+import {
     generateEd25519KeyPair,
     exportEd25519Keys,
-    signEd25519,
+    signEd25519
+} from "../../../dist/experimental/signing/index.js";
+import {
     createAttestation,
     createProvenanceStatements,
     verifyStatementInAttestation
-} from "../../dist/index.js";
+} from "../../../dist/experimental/attestation/index.js";
 
 console.log("📜 Testing Attestation Utilities\n");
 
@@ -18,11 +22,11 @@ console.log("1. Creating sample statements...");
 
 // Generate valid Fide IDs for entities
 const aliceFideId = await calculateFideId("Person", "Person", "https://x.com/alice");
-const namePredicate = await calculateFideId("CreativeWork", "CreativeWork", "schema:name");
+const namePredicate = await calculateFideId("CreativeWork", "Product", "https://schema.org/name");
 const aliceNameValue = await calculateFideId("CreativeWork", "CreativeWork", "Alice");
 
 const bobFideId = await calculateFideId("Person", "Person", "https://x.com/bob");
-const worksForPredicate = await calculateFideId("CreativeWork", "CreativeWork", "schema:worksFor");
+const worksForPredicate = await calculateFideId("CreativeWork", "Product", "https://schema.org/worksFor");
 const acmeFideId = await calculateFideId("Organization", "Organization", "Acme Corp");
 
 // Calculate statement Fide IDs

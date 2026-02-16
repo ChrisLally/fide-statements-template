@@ -3,7 +3,7 @@ import {
     exportEd25519Keys,
     signEd25519,
     verifyEd25519
-} from "../../dist/index.js";
+} from "../../../dist/experimental/signing/index.js";
 
 console.log("🔐 Testing Ed25519 Signing\n");
 

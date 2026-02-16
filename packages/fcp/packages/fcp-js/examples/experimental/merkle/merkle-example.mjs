@@ -1,7 +1,7 @@
 import {
     buildMerkleTree,
     verifyMerkleProof
-} from "../../dist/index.js";
+} from "../../../dist/experimental/merkle/index.js";
 
 console.log("🌲 Testing Merkle Tree Utilities\n");
 

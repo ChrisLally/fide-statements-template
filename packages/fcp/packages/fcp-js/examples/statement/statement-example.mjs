@@ -9,7 +9,7 @@ console.log("📝 Statement Building Example\n");
 console.log("1. Creating statement...");
 const statement1 = await createStatement({
     subject: { rawIdentifier: 'https://x.com/alice', entityType: 'Person', sourceType: 'Product' },
-    predicate: { rawIdentifier: 'schema:name', entityType: 'CreativeWork', sourceType: 'Product' },
+    predicate: { rawIdentifier: 'https://schema.org/name', entityType: 'CreativeWork', sourceType: 'Product' },
     object: { rawIdentifier: 'Alice', entityType: 'CreativeWork', sourceType: 'CreativeWork' }
 });
 
@@ -23,17 +23,17 @@ console.log("2. Building batch of statements...");
 const statements = await buildStatementBatch([
     {
         subject: { rawIdentifier: 'https://x.com/alice', entityType: 'Person', sourceType: 'Product' },
-        predicate: { rawIdentifier: 'schema:name', entityType: 'CreativeWork', sourceType: 'Product' },
+        predicate: { rawIdentifier: 'https://schema.org/name', entityType: 'CreativeWork', sourceType: 'Product' },
         object: { rawIdentifier: 'Alice', entityType: 'CreativeWork', sourceType: 'CreativeWork' }
     },
     {
         subject: { rawIdentifier: 'https://x.com/bob', entityType: 'Person', sourceType: 'Product' },
-        predicate: { rawIdentifier: 'schema:worksFor', entityType: 'CreativeWork', sourceType: 'Product' },
+        predicate: { rawIdentifier: 'https://schema.org/worksFor', entityType: 'CreativeWork', sourceType: 'Product' },
         object: { rawIdentifier: 'https://www.acme.com', entityType: 'Organization', sourceType: 'Product' }
     },
     {
         subject: { rawIdentifier: 'https://x.com/bob', entityType: 'Person', sourceType: 'Product' },
-        predicate: { rawIdentifier: 'schema:name', entityType: 'CreativeWork', sourceType: 'Product' },
+        predicate: { rawIdentifier: 'https://schema.org/name', entityType: 'CreativeWork', sourceType: 'Product' },
         object: { rawIdentifier: 'Bob', entityType: 'CreativeWork', sourceType: 'CreativeWork' }
     }
 ]);
@@ -47,7 +47,7 @@ console.log();
 console.log("3. Creating organization statement...");
 const orgStatement = await createStatement({
     subject: { rawIdentifier: 'https://www.acme.com', entityType: 'Organization', sourceType: 'Product' },
-    predicate: { rawIdentifier: 'schema:name', entityType: 'CreativeWork', sourceType: 'Product' },
+    predicate: { rawIdentifier: 'https://schema.org/name', entityType: 'CreativeWork', sourceType: 'Product' },
     object: { rawIdentifier: 'Acme Corp', entityType: 'CreativeWork', sourceType: 'CreativeWork' }
 });
 
@@ -57,4 +57,4 @@ console.log("   Statement Fide ID:", orgStatement.statementFideId?.slice(0, 30) 
 console.log("🎉 Statement building examples complete!");
 console.log("\n💡 Key points:");
 console.log("   - Always specify rawIdentifier, entityType, and sourceType");
-console.log("   - Predicate shorthand (schema:name) is expanded automatically");
+console.log("   - Predicates must use canonical full URLs (https://...)");

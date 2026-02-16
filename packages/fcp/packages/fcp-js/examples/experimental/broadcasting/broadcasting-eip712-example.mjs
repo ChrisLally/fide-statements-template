@@ -1,13 +1,19 @@
 import {
-    buildStatementBatch,
-    createAttestation,
+    buildStatementBatch
+} from "../../../dist/index.js";
+import {
+    createAttestation
+} from "../../../dist/experimental/attestation/index.js";
+import {
     formatAttestationForJSONL,
     generateRegistryPath,
-    generateJSONLFilename,
+    generateJSONLFilename
+} from "../../../dist/experimental/broadcasting/index.js";
+import {
     getEthereumAddress,
     signEip712,
     createEthereumCaip10
-} from "../../dist/index.js";
+} from "../../../dist/experimental/signing/index.js";
 import { writeFile, mkdir, readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { readFileSync } from "node:fs";
@@ -141,12 +147,12 @@ console.log("1. Creating statements...");
 const statements = await buildStatementBatch([
     {
         subject: { rawIdentifier: 'https://x.com/alice', entityType: 'Person', sourceType: 'Product' },
-        predicate: { rawIdentifier: 'schema:name', entityType: 'CreativeWork', sourceType: 'Product' },
+        predicate: { rawIdentifier: 'https://schema.org/name', entityType: 'CreativeWork', sourceType: 'Product' },
         object: { rawIdentifier: 'Alice', entityType: 'CreativeWork', sourceType: 'CreativeWork' }
     },
     {
         subject: { rawIdentifier: 'https://x.com/alice', entityType: 'Person', sourceType: 'Product' },
-        predicate: { rawIdentifier: 'schema:url', entityType: 'CreativeWork', sourceType: 'Product' },
+        predicate: { rawIdentifier: 'https://schema.org/url', entityType: 'CreativeWork', sourceType: 'Product' },
         object: { rawIdentifier: 'https://x.com/alice', entityType: 'CreativeWork', sourceType: 'CreativeWork' }
     }
 ]);

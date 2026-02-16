@@ -54,16 +54,11 @@
     "check-types": "tsc --noEmit",
     "test": "pnpm run build && node scripts/test-runner.mjs",
     "test:verbose": "pnpm run build && node scripts/test-runner.mjs --verbose",
+    "experimental:guard": "node -e \"if (process.env.FCP_EXPERIMENTAL !== '1') { console.error('Experimental examples are disabled. Re-run with FCP_EXPERIMENTAL=1'); process.exit(1); }\"",
     "example": "pnpm run build && node examples/fide-id/basic-usage.mjs",
     "example:fide-id": "pnpm run build && node examples/fide-id/basic-usage.mjs",
     "example:statement": "pnpm run build && node examples/statement/statement-example.mjs",
-    "example:attestation": "pnpm run build && node examples/attestation/attestation-example.mjs",
-    "example:merkle": "pnpm run build && node examples/merkle/merkle-example.mjs",
-    "example:signing": "pnpm run build && node examples/signing/signing-example.mjs",
-    "example:signing:eip712": "pnpm run build && node examples/signing/signing-eip712-example.mjs",
-    "example:signing:eip191": "pnpm run build && node examples/signing/signing-eip191-example.mjs",
-    "example:broadcasting": "pnpm run build && node examples/broadcasting/broadcasting-example.mjs",
-    "example:broadcasting:eip712": "pnpm run build && node examples/broadcasting/broadcasting-eip712-example.mjs",
+    "example:experimental": "pnpm run experimental:guard && pnpm run build && node scripts/run-experimental-example.mjs",
     "example:schema": "pnpm run build && node examples/schema/schema-example.mjs"
   },
   "peerDependencies": {

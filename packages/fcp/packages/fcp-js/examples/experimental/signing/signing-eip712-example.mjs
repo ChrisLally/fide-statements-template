@@ -3,7 +3,7 @@ import {
     signEip712,
     verifyEip712,
     createEthereumCaip10
-} from "../../dist/index.js";
+} from "../../../dist/experimental/signing/index.js";
 import { generatePrivateKey } from "viem/accounts";
 
 console.log("🔐 Testing EIP-712 Signing (with viem)\n");
