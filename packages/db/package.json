@@ -17,7 +17,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit",
-    "sb": "mkdir -p src/types && pnpm exec dotenv -e ../.env -- npx supabase gen types typescript --project-id qssddvtvjopazmhocivh --schema public > src/types/supabase.ts"
+    "sb": "node ./scripts/generate-supabase-types.mjs"
   },
   "dependencies": {
     "@fide.work/fcp": "workspace:*",
