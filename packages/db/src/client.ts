@@ -1,5 +1,8 @@
+import { config as dotenvConfig } from 'dotenv';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import * as schema from './schema.js';
 
 type DbBundle = {
@@ -8,8 +11,30 @@ type DbBundle = {
 };
 
 let bundle: DbBundle | null = null;
+let envLoaded = false;
+
+function ensureDatabaseUrlLoaded(): void {
+  if (process.env.DATABASE_URL) return;
+  if (envLoaded) return;
+  envLoaded = true;
+
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = dirname(__filename);
+  const packageDir = resolve(__dirname, '..');
+  const envCandidates = [
+    resolve(packageDir, '.env'),
+    resolve(packageDir, '../.env'),
+    resolve(packageDir, '../../.env'),
+  ];
+
+  for (const envPath of envCandidates) {
+    dotenvConfig({ path: envPath });
+    if (process.env.DATABASE_URL) return;
+  }
+}
 
 function createBundle(): DbBundle {
+  ensureDatabaseUrlLoaded();
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
     throw new Error('Missing DATABASE_URL for @fide.work/db');

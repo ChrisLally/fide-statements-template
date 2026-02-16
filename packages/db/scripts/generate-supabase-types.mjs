@@ -19,7 +19,14 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const packageDir = path.resolve(__dirname, "..");
 const outputPath = path.resolve(packageDir, "src/types/fcp-supabase.ts");
+const dbEnvPath = path.resolve(packageDir, ".env");
+const packagesEnvPath = path.resolve(packageDir, "../.env");
 const rootEnvPath = path.resolve(packageDir, "../../.env");
+const envPath = fs.existsSync(dbEnvPath)
+  ? dbEnvPath
+  : fs.existsSync(packagesEnvPath)
+    ? packagesEnvPath
+    : rootEnvPath;
 const tempFullTypesPath = path.join(
   os.tmpdir(),
   `supabase-full-types-${Date.now()}.ts`,
@@ -194,12 +201,12 @@ function main() {
   const fullTypes = args.fromFile
     ? fs.readFileSync(path.resolve(packageDir, args.fromFile), "utf8")
     : execFileSync(
-        "pnpm",
+          "pnpm",
         [
           "exec",
           "dotenv",
           "-e",
-          rootEnvPath,
+          envPath,
           "--",
           "npx",
           "supabase",

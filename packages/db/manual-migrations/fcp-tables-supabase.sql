@@ -22,6 +22,8 @@
 -- CLEANUP
 -- ============================================================================
 DROP TABLE IF EXISTS fcp_attestation_statements CASCADE;
+DROP TABLE IF EXISTS fcp_statement_batch_items CASCADE;
+DROP TABLE IF EXISTS fcp_statement_batches CASCADE;
 DROP TABLE IF EXISTS fcp_statements CASCADE;
 DROP TABLE IF EXISTS fcp_alias_resolution CASCADE;  -- Deprecated (Critique 21): Use owl:sameAs resolution instead
 DROP TABLE IF EXISTS fcp_raw_identifiers CASCADE;
@@ -100,6 +102,7 @@ CREATE TABLE fcp_raw_identifiers (
 -- - No defensive null checks needed in service layer (strict schema enforcement)
 CREATE TABLE fcp_statements (
     statement_fingerprint CHAR(38) PRIMARY KEY,
+    first_created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     subject_type fcp_entity_type NOT NULL,
     subject_source_type fcp_entity_type NOT NULL,
     subject_fingerprint CHAR(38) NOT NULL,
@@ -127,6 +130,23 @@ CREATE TABLE fcp_statements (
         (object_type = '0' AND object_source_type = '0') OR
         (object_type <> '0')
     )
+);
+
+-- ============================================================================
+-- 3. STATEMENT BATCHES (Root-level ingest tracking)
+-- ============================================================================
+-- Tracks first-seen statement batch roots and links batch roots to statement fingerprints.
+CREATE TABLE fcp_statement_batches (
+    root CHAR(64) PRIMARY KEY,
+    source TEXT NOT NULL DEFAULT 'unknown',
+    first_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE fcp_statement_batch_items (
+    batch_root CHAR(64) NOT NULL REFERENCES fcp_statement_batches(root) ON DELETE CASCADE,
+    statement_fingerprint CHAR(38) NOT NULL REFERENCES fcp_statements(statement_fingerprint) ON DELETE CASCADE,
+    indexed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_fcp_statement_batch_items UNIQUE (batch_root, statement_fingerprint)
 );
 
 -- ============================================================================
@@ -166,6 +186,12 @@ WHERE predicate_type = '6' AND predicate_source_type = '5';
 -- Predicate lookup with type filtering
 CREATE INDEX IF NOT EXISTS idx_statements_predicate_with_type
 ON fcp_statements(predicate_fingerprint, predicate_type);
+
+CREATE INDEX IF NOT EXISTS idx_statement_batches_first_seen
+ON fcp_statement_batches(first_seen_at);
+
+CREATE INDEX IF NOT EXISTS idx_statement_batch_items_statement
+ON fcp_statement_batch_items(statement_fingerprint);
 
 -- ============================================================================
 -- RESOLUTION QUERY SUPPORT

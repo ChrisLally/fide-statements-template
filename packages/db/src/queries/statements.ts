@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { extractFideIdFingerprint, isValidFideId } from '@fide.work/fcp';
+import { assertFideId, parseFideId } from '@fide.work/fcp';
 import { db } from '../client.js';
 import { decodeCursor, encodeCursor } from '../utils/cursor.js';
 
@@ -23,10 +23,12 @@ export type ListStatementsInput = {
 };
 
 function toFingerprintOrThrow(fideId: string, fieldName: string): string {
-  if (!isValidFideId(fideId)) {
+  try {
+    assertFideId(fideId);
+    return parseFideId(fideId).fingerprint;
+  } catch {
     throw new Error(`Invalid ${fieldName}: expected did:fide:0x...`);
   }
-  return extractFideIdFingerprint(fideId);
 }
 
 export async function listStatements(input: ListStatementsInput): Promise<{ items: StatementItem[]; nextCursor: string | null }> {

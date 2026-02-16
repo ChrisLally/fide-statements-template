@@ -16,7 +16,8 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "mock:webhook": "pnpm run build && node dist/scripts/mock-webhook.js"
   },
   "dependencies": {
     "@fide.work/fcp": "workspace:*",

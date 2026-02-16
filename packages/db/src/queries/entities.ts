@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { extractFideIdFingerprint, isValidFideId } from '@fide.work/fcp';
+import { assertFideId, parseFideId } from '@fide.work/fcp';
 import { db } from '../client.js';
 import { listStatements, type StatementItem } from './statements.js';
 
@@ -16,11 +16,13 @@ export async function getEntityByFideId(input: {
   statementsLimit?: number;
   statementsCursor?: string;
 }): Promise<EntityResult | null> {
-  if (!isValidFideId(input.fideId)) {
+  let fingerprint: string;
+  try {
+    assertFideId(input.fideId);
+    fingerprint = parseFideId(input.fideId).fingerprint;
+  } catch {
     throw new Error('Invalid fideId: expected did:fide:0x...');
   }
-
-  const fingerprint = extractFideIdFingerprint(input.fideId);
 
   const primaryRawRows = await db.execute(sql<{
     raw_identifier: string;

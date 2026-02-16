@@ -1,4 +1,4 @@
-import { boolean, char, index, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
+import { boolean, char, index, pgTable, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
 
 export const fcpRawIdentifiers = pgTable('fcp_raw_identifiers', {
   identifierFingerprint: char('identifier_fingerprint', { length: 38 }).primaryKey(),
@@ -9,6 +9,7 @@ export const fcpRawIdentifiers = pgTable('fcp_raw_identifiers', {
 
 export const fcpStatements = pgTable('fcp_statements', {
   statementFingerprint: char('statement_fingerprint', { length: 38 }).primaryKey(),
+  firstCreatedAt: timestamp('first_created_at', { withTimezone: true }).notNull().defaultNow(),
   subjectType: char('subject_type', { length: 1 }).notNull(),
   subjectSourceType: char('subject_source_type', { length: 1 }).notNull(),
   subjectFingerprint: char('subject_fingerprint', { length: 38 }).notNull(),
@@ -19,6 +20,28 @@ export const fcpStatements = pgTable('fcp_statements', {
   objectSourceType: char('object_source_type', { length: 1 }).notNull(),
   objectFingerprint: char('object_fingerprint', { length: 38 }).notNull(),
 });
+
+export const fcpStatementBatches = pgTable('fcp_statement_batches', {
+  root: char('root', { length: 64 }).primaryKey(),
+  source: text('source').notNull().default('unknown'),
+  firstSeenAt: timestamp('first_seen_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const fcpStatementBatchItems = pgTable('fcp_statement_batch_items', {
+  batchRoot: char('batch_root', { length: 64 })
+    .notNull()
+    .references(() => fcpStatementBatches.root, { onDelete: 'cascade' }),
+  statementFingerprint: char('statement_fingerprint', { length: 38 })
+    .notNull()
+    .references(() => fcpStatements.statementFingerprint, { onDelete: 'cascade' }),
+  indexedAt: timestamp('indexed_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  batchStmtUniqueIdx: uniqueIndex('idx_fcp_statement_batch_items_unique').on(
+    table.batchRoot,
+    table.statementFingerprint
+  ),
+  statementFingerprintIdx: index('idx_fcp_statement_batch_items_statement').on(table.statementFingerprint),
+}));
 
 export const fideApiKeys = pgTable('fide_api_keys', {
   id: text('id').primaryKey(),

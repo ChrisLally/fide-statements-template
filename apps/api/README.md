@@ -37,3 +37,5 @@ Copy and edit:
 ```bash
 cp .env.example .env
 ```
+
+`DATABASE_URL` is not read from `apps/api/.env`; DB configuration is provided by `@fide.work/db` via `/Users/chrislally/Desktop/fide.work/packages/db/.env`.

@@ -31,6 +31,7 @@ export type Database = {
       }
       fcp_statements: {
         Row: {
+          first_created_at: string
           object_fingerprint: string
           object_source_type: Database["public"]["Enums"]["fcp_entity_type"]
           object_type: Database["public"]["Enums"]["fcp_entity_type"]
@@ -43,6 +44,7 @@ export type Database = {
           subject_type: Database["public"]["Enums"]["fcp_entity_type"]
         }
         Insert: {
+          first_created_at?: string
           object_fingerprint: string
           object_source_type: Database["public"]["Enums"]["fcp_entity_type"]
           object_type: Database["public"]["Enums"]["fcp_entity_type"]
@@ -55,6 +57,7 @@ export type Database = {
           subject_type: Database["public"]["Enums"]["fcp_entity_type"]
         }
         Update: {
+          first_created_at?: string
           object_fingerprint?: string
           object_source_type?: Database["public"]["Enums"]["fcp_entity_type"]
           object_type?: Database["public"]["Enums"]["fcp_entity_type"]

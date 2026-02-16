@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@fide.work/fcp": "workspace:*",
+    "dotenv": "^16.4.7",
     "drizzle-orm": "^0.44.7",
     "postgres": "^3.4.7"
   },

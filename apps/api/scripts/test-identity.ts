@@ -3,6 +3,7 @@
  * Run: pnpm test:identity (from repo root) or npx tsx scripts/test-identity.ts (from apps/api)
  */
 import 'dotenv/config';
+import { pgClient } from '@fide.work/db';
 
 const BASE = process.env.API_BASE ?? 'http://localhost:3001';
 const TIMEOUT_MS = 15000;
@@ -23,23 +24,14 @@ async function main() {
     process.exit(1);
   }
 
-  // 2. DB connectivity (optional - quick check)
-  const dbUrl = process.env.DATABASE_URL;
-  if (!dbUrl) {
-    console.log('\n2. SKIP DB check (no DATABASE_URL)');
-  } else {
-    console.log('\n2. DB connectivity');
-    try {
-      const { default: pg } = await import('pg');
-      const client = new pg.Client({ connectionString: dbUrl, connectionTimeoutMillis: 3000 });
-      await client.connect();
-      await client.query('SELECT 1');
-      await client.end();
-      console.log('   OK: Connected');
-    } catch (err) {
-      console.error('   FAIL:', err);
-      console.log('   Identity endpoint needs DB. Fix connection and retry.');
-    }
+  // 2. DB connectivity (through @fide.work/db package)
+  console.log('\n2. DB connectivity');
+  try {
+    await pgClient`select 1`;
+    console.log('   OK: Connected');
+  } catch (err) {
+    console.error('   FAIL:', err);
+    console.log('   Identity endpoint needs DB. Ensure packages/db/.env has DATABASE_URL.');
   }
 
   // 3. Identity resolve (by parts: entityType + sourceType + rawIdentifier)
