@@ -1,5 +1,5 @@
 import {
-    buildStatementBatch
+    buildStatementBatchWithRoot
 } from "../../../dist/index.js";
 import { createAttestation } from "../../../dist/experimental/attestation/index.js";
 import {
@@ -19,7 +19,7 @@ let failures = 0;
 let checks = 0;
 
 // Setup: Create statements and attestation
-const statements = await buildStatementBatch([
+const { statements } = await buildStatementBatchWithRoot([
     {
         subject: { rawIdentifier: "https://x.com/alice", entityType: "Person", sourceType: "Product" },
         predicate: { rawIdentifier: "https://schema.org/name", entityType: "CreativeWork", sourceType: "Product" },

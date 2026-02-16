@@ -1,7 +1,7 @@
 import {
     createStatement,
     createStatementFromParts,
-    buildStatementBatch
+    buildStatementBatchWithRoot
 } from "../../dist/index.js";
 
 console.log("📝 Testing Statement Building Helpers\n");
@@ -41,11 +41,11 @@ try {
     console.error("  ❌ Error:", error.message);
 }
 
-// Test 2: Build statement batch
-console.log("\n2. Testing buildStatementBatch...");
+// Test 2: Build statement batch with root
+console.log("\n2. Testing buildStatementBatchWithRoot...");
 checks += 1;
 try {
-    const statements = await buildStatementBatch([
+    const { statements, statementFideIds, root } = await buildStatementBatchWithRoot([
         {
             subject: { rawIdentifier: 'https://x.com/alice', entityType: 'Person', sourceType: 'Product' },
             predicate: { rawIdentifier: 'https://schema.org/name', entityType: 'CreativeWork', sourceType: 'Product' },
@@ -64,8 +64,11 @@ try {
     } else if (!statements[0].statementFideId || !statements[1].statementFideId) {
         failures += 1;
         console.error("  ❌ Missing statement Fide IDs");
+    } else if (statementFideIds.length !== 2 || !root) {
+        failures += 1;
+        console.error("  ❌ Missing statement batch IDs or root");
     } else {
-        console.log("  ✅ Created batch of", statements.length, "statements");
+        console.log("  ✅ Created batch of", statements.length, "statements with root");
     }
 } catch (error) {
     failures += 1;

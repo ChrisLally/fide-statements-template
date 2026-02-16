@@ -48,7 +48,8 @@ export type {
 export {
     createStatement,
     createStatementFromParts,
-    buildStatementBatch,
+    buildStatementBatchWithRoot,
     type StatementInput,
-    type Statement
+    type Statement,
+    type StatementBatchWithRoot
 } from "./statement/index.js";

@@ -10,6 +10,7 @@ import {
 } from "../fide-id/index.js";
 import type { FideId, FideEntityType, FideStatementPredicateEntityType } from "../fide-id/types.js";
 import { assertStatementFideIdsPolicy, assertStatementInputPolicy } from "./policy.js";
+import { createHash } from "node:crypto";
 
 /**
  * Input for creating a statement.
@@ -58,6 +59,16 @@ export interface Statement {
     objectRawIdentifier: string;
     /** Statement Fide ID (calculated) */
     statementFideId?: FideId;
+}
+
+/**
+ * Batch build result with deterministic content root.
+ */
+export interface StatementBatchWithRoot {
+    statements: Statement[];
+    statementFideIds: FideId[];
+    /** Deterministic SHA-256 hex hash of ordered statement Fide IDs. */
+    root: string;
 }
 
 /**
@@ -162,27 +173,31 @@ export async function createStatementFromParts(
 }
 
 /**
- * Build a batch of statements from an array of inputs.
+ * Build a batch of statements and derive a deterministic batch root.
  *
- * @param inputs - Array of statement inputs
- * @returns Array of complete statement objects
+ * Root derivation:
+ * - Ordered `statementFideIds` are joined with `\\n`
+ * - SHA-256 is computed over that byte sequence
+ * - Result is returned as lowercase hex string
  *
- * @example
- * ```ts
- * const statements = await buildStatementBatch([
- *   {
- *     subject: { rawIdentifier: 'https://x.com/alice', entityType: 'Person', sourceType: 'Product' },
- *     predicate: { rawIdentifier: 'https://schema.org/name', entityType: 'CreativeWork', sourceType: 'Product' },
- *     object: { rawIdentifier: 'Alice', entityType: 'CreativeWork', sourceType: 'CreativeWork' }
- *   },
- *   {
- *     subject: { rawIdentifier: 'https://x.com/bob', entityType: 'Person', sourceType: 'Product' },
- *     predicate: { rawIdentifier: 'https://schema.org/worksFor', entityType: 'CreativeWork', sourceType: 'Product' },
- *     object: { rawIdentifier: 'https://www.acme.com', entityType: 'Organization', sourceType: 'Product' }
- *   }
- * ]);
- * ```
+ * @param inputs Array of statement inputs
+ * @returns Statements, ordered statement IDs, and deterministic root hash
  */
-export async function buildStatementBatch(inputs: StatementInput[]): Promise<Statement[]> {
-    return Promise.all(inputs.map(input => createStatement(input)));
+export async function buildStatementBatchWithRoot(inputs: StatementInput[]): Promise<StatementBatchWithRoot> {
+    const statements = await Promise.all(inputs.map((input) => createStatement(input)));
+    const statementFideIds = statements
+        .map((s) => s.statementFideId)
+        .filter((id): id is FideId => !!id);
+
+    if (statementFideIds.length !== statements.length) {
+        throw new Error("Batch build failed: one or more statements are missing statementFideId.");
+    }
+
+    const root = createHash("sha256").update(statementFideIds.join("\n")).digest("hex");
+
+    return {
+        statements,
+        statementFideIds,
+        root
+    };
 }

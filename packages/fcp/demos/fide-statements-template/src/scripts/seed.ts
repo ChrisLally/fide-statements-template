@@ -2,17 +2,16 @@
  * Seed sample FCP statements only (no attestation).
  *
  * Output:
- * - .fide/statements/YYYY/MM/DD/{merkleRoot}.jsonl
+ * - .fide/statements/YYYY/MM/DD/{batchHash}.jsonl
  */
 
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createHash } from "node:crypto";
 import {
   buildStatementBatch,
-  buildMerkleTree,
   calculateStatementFideId,
-  SCHEMA_PREDICATES,
   type FideId,
 } from "@fide.work/fcp";
 import { loadDemoEnv } from "../lib/env.js";
@@ -42,7 +41,7 @@ async function main() {
         sourceType: "Product",
       },
       predicate: {
-        rawIdentifier: SCHEMA_PREDICATES.name,
+        rawIdentifier: "https://schema.org/name",
         entityType: "CreativeWork",
         sourceType: "Product",
       },
@@ -59,7 +58,7 @@ async function main() {
         sourceType: "Product",
       },
       predicate: {
-        rawIdentifier: SCHEMA_PREDICATES.worksFor,
+        rawIdentifier: "https://schema.org/worksFor",
         entityType: "CreativeWork",
         sourceType: "Product",
       },
@@ -77,7 +76,7 @@ async function main() {
         sourceType: "CreativeWork",
       },
       predicate: {
-        rawIdentifier: SCHEMA_PREDICATES.name,
+        rawIdentifier: "https://schema.org/name",
         entityType: "CreativeWork",
         sourceType: "Product",
       },
@@ -100,7 +99,7 @@ async function main() {
   const recomputed = await Promise.all(
     statements.map((s) => calculateStatementFideId(s.subjectFideId, s.predicateFideId, s.objectFideId))
   );
-  const { root } = await buildMerkleTree(recomputed);
+  const root = createHash("sha256").update(recomputed.join("\n")).digest("hex");
 
   const now = new Date();
   const datePartition = getUTCDatePartition(now);

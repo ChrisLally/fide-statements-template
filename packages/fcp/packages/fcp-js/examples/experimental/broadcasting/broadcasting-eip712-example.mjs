@@ -1,5 +1,5 @@
 import {
-    buildStatementBatch
+    buildStatementBatchWithRoot
 } from "../../../dist/index.js";
 import {
     createAttestation
@@ -144,7 +144,7 @@ console.log("📡 Broadcasting Example (EIP-712 with EAS Signer)\n");
 
 // Step 1: Create statements
 console.log("1. Creating statements...");
-const statements = await buildStatementBatch([
+const { statements, statementFideIds, root } = await buildStatementBatchWithRoot([
     {
         subject: { rawIdentifier: 'https://x.com/alice', entityType: 'Person', sourceType: 'Product' },
         predicate: { rawIdentifier: 'https://schema.org/name', entityType: 'CreativeWork', sourceType: 'Product' },
@@ -157,8 +157,8 @@ const statements = await buildStatementBatch([
     }
 ]);
 
-const statementFideIds = statements.map(s => s.statementFideId).filter(Boolean);
 console.log("✅ Created", statements.length, "statements\n");
+console.log("   Batch root:", root);
 
 // Step 2: Get Ethereum address and create CAIP-10 identifier
 console.log("2. Setting up EIP-712 signing...");
