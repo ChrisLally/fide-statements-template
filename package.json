@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "build": "turbo run build",
-    "build:api:prod": "pnpm --filter @fide.work/fcp build && pnpm --filter @fide.work/db build && pnpm --filter api build:local",
+    "build:api:prod": "pnpm --filter @fide.work/fcp build && pnpm --filter @fide.work/db build && pnpm --filter @fide.work/graph build && pnpm --filter @fide.work/indexer build && pnpm --filter api build:local",
     "build:docs:prod": "pnpm --filter @fide.work/fcp build && pnpm --filter docs build",
     "sdk:generate": "pnpm --filter docs sdk:generate",
     "dev": "turbo run dev",
