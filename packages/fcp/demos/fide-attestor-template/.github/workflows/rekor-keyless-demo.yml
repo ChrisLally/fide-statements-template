@@ -28,41 +28,79 @@ jobs:
       - name: Install Cosign
         uses: sigstore/cosign-installer@v3
 
-      - name: Resolve latest statement-attestation file
-        id: latest
+      - name: Detect newly added statement-attestations in this push
+        id: changes
         shell: bash
         run: |
           set -euo pipefail
-          latest="$(find .fide/statement-attestations -type f -name '*.jsonl' | sort | tail -n 1 || true)"
-          if [ -z "${latest}" ]; then
-            echo "No .jsonl files found in .fide/statement-attestations"
+
+          if [ "${{ github.event_name }}" = "push" ]; then
+            before="${{ github.event.before }}"
+            after="${{ github.sha }}"
+            if [ -z "${before}" ] || [ "${before}" = "0000000000000000000000000000000000000000" ]; then
+              before="$(git rev-list --max-parents=0 HEAD | tail -n 1)"
+            fi
+          else
+            # manual dispatch fallback
+            before="$(git rev-parse HEAD~1)"
+            after="$(git rev-parse HEAD)"
+          fi
+
+          mapfile -t lines < <(git diff --name-status "${before}" "${after}" -- ".fide/statement-attestations")
+          if [ "${#lines[@]}" -eq 0 ]; then
+            echo "No attestation path changes in this range."
+            echo "has_new=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          added=()
+          invalid=()
+          for line in "${lines[@]}"; do
+            status="$(awk '{print $1}' <<<"${line}")"
+            path="$(awk '{print $2}' <<<"${line}")"
+            if [[ "${path}" != *.jsonl ]]; then
+              continue
+            fi
+            if [ "${status}" = "A" ]; then
+              added+=("${path}")
+            else
+              invalid+=("${line}")
+            fi
+          done
+
+          if [ "${#invalid[@]}" -gt 0 ]; then
+            echo "Invalid non-additive attestation changes detected:"
+            printf '  %s\n' "${invalid[@]}"
             exit 1
           fi
-          echo "file=${latest}" >> "$GITHUB_OUTPUT"
-          echo "Latest file: ${latest}"
+
+          if [ "${#added[@]}" -eq 0 ]; then
+            echo "No newly added attestation files in this push."
+            echo "has_new=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "has_new=true" >> "$GITHUB_OUTPUT"
+          {
+            echo "files<<EOF"
+            printf '%s\n' "${added[@]}"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+          echo "New attestation files:"
+          printf '  %s\n' "${added[@]}"
 
       - name: Attest blob keylessly as DSSE (Rekor v2 hybrid)
         id: sign
+        if: steps.changes.outputs.has_new == 'true'
         shell: bash
         env:
-          ATTESTATION_FILE: ${{ steps.latest.outputs.file }}
           FCP_PREDICATE_TYPE: https://fide.work/fcp/predicate/statement-attestation/v1
           REKOR_V2_URL: https://log2025-1.rekor.sigstore.dev
           TSA_URL: https://timestamp.sigstore.dev/api/v1/timestamp
+          PROOF_WEBHOOK_URL: https://webhook.site/19378ebb-2919-4ec1-8c18-9573661101be
+          CERT_ID_RE: ^https://github.com/${{ github.repository }}/.github/workflows/rekor-keyless-demo.yml@refs/heads/${{ github.ref_name }}$
         run: |
           set -euo pipefail
-          stamp="$(date -u +%Y-%m-%d-%H%M)"
-          short="$(basename "${ATTESTATION_FILE}" .jsonl | awk -F- '{print $NF}')"
-          outdir=".fide/rekor-proofs/$(date -u +%Y/%m/%d)"
-          mkdir -p "${outdir}"
-          bundle="${outdir}/${stamp}-${short}.attestation.sigstore.json"
-          tsa="${outdir}/${stamp}-${short}.attestation.rfc3161.tsr"
-          rekor="${outdir}/${stamp}-${short}.attestation.rekor-v2.json"
-          cert_file="${outdir}/${stamp}-${short}.cert.pem"
-          envelope_file="${outdir}/${stamp}-${short}.envelope.json"
-
-          node -e "const fs=require('fs'); const p=process.env.ATTESTATION_FILE; const line=fs.readFileSync(p,'utf8').trim().split('\n')[0]; const a=JSON.parse(line); const pred={attestation:{m:a.m,u:a.u,r:a.r,s:a.s,t:a.t},source:{path:p}}; fs.writeFileSync('predicate.json', JSON.stringify(pred));"
-
           tsa_flag=""
           if cosign attest-blob --help | grep -q -- "--rfc3161-timestamp-bundle"; then
             tsa_flag="--rfc3161-timestamp-bundle"
@@ -74,28 +112,31 @@ jobs:
             exit 1
           fi
 
-          cosign attest-blob \
-            --yes \
-            --tlog-upload=false \
-            --timestamp-server-url "${TSA_URL}" \
-            "${tsa_flag}" "${tsa}" \
-            --predicate predicate.json \
-            --type "${FCP_PREDICATE_TYPE}" \
-            --bundle "${bundle}" \
-            --output-certificate "${cert_file}" \
-            "${ATTESTATION_FILE}" > "${envelope_file}"
+          while IFS= read -r ATTESTATION_FILE; do
+            [ -z "${ATTESTATION_FILE}" ] && continue
+            stamp="$(date -u +%Y-%m-%d-%H%M)"
+            short="$(basename "${ATTESTATION_FILE}" .jsonl | awk -F- '{print $NF}')"
+            outdir=".fide/rekor-proofs/$(date -u +%Y/%m/%d)"
+            mkdir -p "${outdir}"
+            bundle="${outdir}/${stamp}-${short}.attestation.sigstore.json"
+            tsa="${outdir}/${stamp}-${short}.attestation.rfc3161.tsr"
+            rekor="${outdir}/${stamp}-${short}.attestation.rekor-v2.json"
+            cert_file="${outdir}/${stamp}-${short}.cert.pem"
+            envelope_file="${outdir}/${stamp}-${short}.envelope.json"
 
-          RAW_ENVELOPE_JSON="$(jq -c '
-            first(
-              .. | objects |
-              select(
-                (has("payloadType") or has("payload_type")) and
-                has("signatures") and
-                (has("payload") or has("base64Payload") or has("payloadBytes"))
-              )
-            ) // empty
-          ' "${envelope_file}" 2>/dev/null || true)"
-          if [ -z "${RAW_ENVELOPE_JSON}" ]; then
+            ATTESTATION_FILE="${ATTESTATION_FILE}" node -e "const fs=require('fs'); const p=process.env.ATTESTATION_FILE; const line=fs.readFileSync(p,'utf8').trim().split('\n')[0]; const a=JSON.parse(line); const pred={attestation:{m:a.m,u:a.u,r:a.r,s:a.s,t:a.t},source:{path:p}}; fs.writeFileSync('predicate.json', JSON.stringify(pred));"
+
+            cosign attest-blob \
+              --yes \
+              --tlog-upload=false \
+              --timestamp-server-url "${TSA_URL}" \
+              "${tsa_flag}" "${tsa}" \
+              --predicate predicate.json \
+              --type "${FCP_PREDICATE_TYPE}" \
+              --bundle "${bundle}" \
+              --output-certificate "${cert_file}" \
+              "${ATTESTATION_FILE}" > "${envelope_file}"
+
             RAW_ENVELOPE_JSON="$(jq -c '
               first(
                 .. | objects |
@@ -104,98 +145,128 @@ jobs:
                   has("signatures") and
                   (has("payload") or has("base64Payload") or has("payloadBytes"))
                 )
-              ) // empty
-            ' "${bundle}" 2>/dev/null || true)"
-          fi
-          if [ -z "${RAW_ENVELOPE_JSON}" ]; then
-            echo "Could not find DSSE envelope in bundle JSON"
-            echo "Envelope file top-level keys:"
-            jq -c 'keys' "${envelope_file}" || true
-            echo "Bundle top-level keys:"
-            jq -c 'keys' "${bundle}" || true
-            exit 1
-          fi
+                ) // empty
+              ' "${envelope_file}" 2>/dev/null || true)"
+            if [ -z "${RAW_ENVELOPE_JSON}" ]; then
+              RAW_ENVELOPE_JSON="$(jq -c '
+                first(
+                  .. | objects |
+                  select(
+                    (has("payloadType") or has("payload_type")) and
+                    has("signatures") and
+                    (has("payload") or has("base64Payload") or has("payloadBytes"))
+                  )
+                ) // empty
+              ' "${bundle}" 2>/dev/null || true)"
+            fi
+            if [ -z "${RAW_ENVELOPE_JSON}" ]; then
+              echo "Could not find DSSE envelope in bundle JSON"
+              echo "Envelope file top-level keys:"
+              jq -c 'keys' "${envelope_file}" || true
+              echo "Bundle top-level keys:"
+              jq -c 'keys' "${bundle}" || true
+              exit 1
+            fi
 
-          ENVELOPE_JSON="$(jq -cn --argjson e "${RAW_ENVELOPE_JSON}" '
+            ENVELOPE_JSON="$(jq -cn --argjson e "${RAW_ENVELOPE_JSON}" '
+              {
+                payload: ($e.payload // $e.base64Payload // $e.payloadBytes),
+                payloadType: ($e.payloadType // $e.payload_type),
+                signatures: (($e.signatures // []) | map({
+                  sig: (.sig // .base64Signature),
+                  keyid: (.keyid // .keyId // "")
+                }))
+              }
+            ')"
+            CERT_B64="$(openssl x509 -in "${cert_file}" -outform DER | base64 -w0)"
+            if [ -z "${ENVELOPE_JSON}" ] || [ "${ENVELOPE_JSON}" = "null" ]; then
+              echo "Missing dsseEnvelope in bundle"
+              exit 1
+            fi
+            if ! jq -e '.payload and .payloadType and (.signatures | length > 0) and (.signatures | all(.sig))' >/dev/null 2>&1 <<<"${ENVELOPE_JSON}"; then
+              echo "Normalized envelope missing required DSSE fields"
+              echo "${ENVELOPE_JSON}"
+              exit 1
+            fi
+            if [ -z "${CERT_B64}" ] || [ "${CERT_B64}" = "null" ]; then
+              echo "Missing certificate bytes"
+              exit 1
+            fi
+
+            cat > rekor_v2_payload.json <<EOF
             {
-              payload: ($e.payload // $e.base64Payload // $e.payloadBytes),
-              payloadType: ($e.payloadType // $e.payload_type),
-              signatures: (($e.signatures // []) | map({
-                sig: (.sig // .base64Signature),
-                keyid: (.keyid // .keyId // "")
-              }))
+              "dsseRequestV002": {
+                "envelope": ${ENVELOPE_JSON},
+                "verifiers": [
+                  {
+                    "x509Certificate": {
+                      "rawBytes": "${CERT_B64}"
+                    },
+                    "keyDetails": "PKIX_ECDSA_P256_SHA_256"
+                  }
+                ]
+              }
             }
-          ')"
-          CERT_B64="$(openssl x509 -in "${cert_file}" -outform DER | base64 -w0)"
-          if [ -z "${ENVELOPE_JSON}" ] || [ "${ENVELOPE_JSON}" = "null" ]; then
-            echo "Missing dsseEnvelope in bundle"
-            exit 1
-          fi
-          if ! jq -e '.payload and .payloadType and (.signatures | length > 0) and (.signatures | all(.sig))' >/dev/null 2>&1 <<<"${ENVELOPE_JSON}"; then
-            echo "Normalized envelope missing required DSSE fields"
-            echo "${ENVELOPE_JSON}"
-            exit 1
-          fi
-          if [ -z "${CERT_B64}" ] || [ "${CERT_B64}" = "null" ]; then
-            echo "Missing certificate bytes"
-            exit 1
-          fi
+            EOF
 
-          cat > rekor_v2_payload.json <<EOF
-          {
-            "dsseRequestV002": {
-              "envelope": ${ENVELOPE_JSON},
-              "verifiers": [
-                {
-                  "x509Certificate": {
-                    "rawBytes": "${CERT_B64}"
-                  },
-                  "keyDetails": "PKIX_ECDSA_P256_SHA_256"
-                }
-              ]
-            }
-          }
-          EOF
+            http_code="$(curl -sS -o rekor_http_response.json -w "%{http_code}" -X POST \
+              -H "Content-Type: application/json" \
+              -H "Accept: application/json" \
+              --data @rekor_v2_payload.json \
+              "${REKOR_V2_URL}/api/v2/log/entries")"
+            if [ "${http_code}" -lt 200 ] || [ "${http_code}" -ge 300 ]; then
+              echo "Rekor v2 upload failed with HTTP ${http_code}"
+              cat rekor_http_response.json
+              exit 1
+            fi
 
-          http_code="$(curl -sS -o rekor_http_response.json -w "%{http_code}" -X POST \
-            -H "Content-Type: application/json" \
-            -H "Accept: application/json" \
-            --data @rekor_v2_payload.json \
-            "${REKOR_V2_URL}/api/v2/log/entries")"
-          if [ "${http_code}" -lt 200 ] || [ "${http_code}" -ge 300 ]; then
-            echo "Rekor v2 upload failed with HTTP ${http_code}"
-            cat rekor_http_response.json
-            exit 1
-          fi
+            cosign verify-blob-attestation \
+              --insecure-ignore-tlog \
+              --bundle "${bundle}" \
+              --type "${FCP_PREDICATE_TYPE}" \
+              --certificate-identity-regexp "${CERT_ID_RE}" \
+              --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+              "${ATTESTATION_FILE}"
 
-          cp rekor_http_response.json "${rekor}"
-          cp "${rekor}" ".fide/rekor-proofs/latest.rekor-v2.json"
-          cp "${bundle}" ".fide/rekor-proofs/latest.attestation.sigstore.json"
-          cp "${tsa}" ".fide/rekor-proofs/latest.attestation.rfc3161.tsr"
-          echo "bundle=${bundle}" >> "$GITHUB_OUTPUT"
-          echo "rekor=${rekor}" >> "$GITHUB_OUTPUT"
-          echo "tsa=${tsa}" >> "$GITHUB_OUTPUT"
-          echo "Rekor response: ${rekor}"
-          echo "Bundle: ${bundle}"
+            cp rekor_http_response.json "${rekor}"
+            cp "${rekor}" ".fide/rekor-proofs/latest.rekor-v2.json"
+            cp "${bundle}" ".fide/rekor-proofs/latest.attestation.sigstore.json"
+            cp "${tsa}" ".fide/rekor-proofs/latest.attestation.rfc3161.tsr"
 
-      - name: Verify DSSE attestation and GitHub workflow identity
-        shell: bash
-        env:
-          ATTESTATION_FILE: ${{ steps.latest.outputs.file }}
-          BUNDLE_FILE: ${{ steps.sign.outputs.bundle }}
-          CERT_ID_RE: ^https://github.com/${{ github.repository }}/.github/workflows/rekor-keyless-demo.yml@refs/heads/${{ github.ref_name }}$
-          FCP_PREDICATE_TYPE: https://fide.work/fcp/predicate/statement-attestation/v1
-        run: |
-          set -euo pipefail
-          cosign verify-blob-attestation \
-            --insecure-ignore-tlog \
-            --bundle "${BUNDLE_FILE}" \
-            --type "${FCP_PREDICATE_TYPE}" \
-            --certificate-identity-regexp "${CERT_ID_RE}" \
-            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-            "${ATTESTATION_FILE}"
+            webhook_payload="$(jq -n \
+              --arg repo "${{ github.repository }}" \
+              --arg sha "${{ github.sha }}" \
+              --arg runId "${{ github.run_id }}" \
+              --arg attestationFile "${ATTESTATION_FILE}" \
+              --arg rekorFile "${rekor}" \
+              --arg bundleFile "${bundle}" \
+              --arg tsaFile "${tsa}" \
+              --arg tsaTokenB64 "$(base64 -w0 "${tsa}")" \
+              --argjson rekorResponse "$(cat "${rekor}")" \
+              '{
+                repo: $repo,
+                sha: $sha,
+                runId: $runId,
+                attestationFile: $attestationFile,
+                rekorFile: $rekorFile,
+                bundleFile: $bundleFile,
+                tsaFile: $tsaFile,
+                tsaTokenB64: $tsaTokenB64,
+                rekorResponse: $rekorResponse
+              }')"
+
+            curl -sS -X POST \
+              -H "Content-Type: application/json" \
+              --data "${webhook_payload}" \
+              "${PROOF_WEBHOOK_URL}" >/dev/null || echo "Webhook POST failed; continuing."
+
+            echo "Processed: ${ATTESTATION_FILE}"
+            echo "  Rekor response: ${rekor}"
+            echo "  Bundle: ${bundle}"
+          done <<< "${{ steps.changes.outputs.files }}"
 
       - name: Upload Rekor proof artifacts
+        if: steps.changes.outputs.has_new == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: rekor-keyless-proofs

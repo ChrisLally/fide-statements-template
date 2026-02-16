@@ -107,6 +107,8 @@ interface RepoMatchRecord {
   repo: string;
   certIdentityUri: string | null;
   payloadHashDigest: string | null;
+  certNotBefore: string | null;
+  certNotAfter: string | null;
   checkpointTreeSizeUpperBound: number;
   checkpointEnvelopeUpperBound: string;
 }
@@ -130,6 +132,10 @@ function normalizeRepoMatchRecord(
     typeof record.certIdentityUri === "string" ? record.certIdentityUri : null;
   const payloadHashDigest =
     typeof record.payloadHashDigest === "string" ? record.payloadHashDigest : null;
+  const certNotBefore =
+    typeof record.certNotBefore === "string" ? record.certNotBefore : null;
+  const certNotAfter =
+    typeof record.certNotAfter === "string" ? record.certNotAfter : null;
   const checkpointTreeSizeUpperBound =
     typeof record.checkpointTreeSizeUpperBound === "number" &&
     Number.isFinite(record.checkpointTreeSizeUpperBound) &&
@@ -146,6 +152,8 @@ function normalizeRepoMatchRecord(
     repo,
     certIdentityUri,
     payloadHashDigest,
+    certNotBefore,
+    certNotAfter,
     checkpointTreeSizeUpperBound,
     checkpointEnvelopeUpperBound,
   };
@@ -772,6 +780,22 @@ function extractFirstGithubIdentityUriFromDsseCert(entry: unknown): string | nul
   }
 }
 
+function extractCertNotBeforeAfterFromDsseCert(
+  entry: unknown
+): { certNotBefore: string | null; certNotAfter: string | null } {
+  const certRawB64 = extractDsseVerifierCertRawB64(entry);
+  if (!certRawB64) return { certNotBefore: null, certNotAfter: null };
+  try {
+    const certDer = Buffer.from(certRawB64, "base64");
+    const cert = new X509Certificate(certDer);
+    const certNotBefore = new Date(cert.validFrom).toISOString();
+    const certNotAfter = new Date(cert.validTo).toISOString();
+    return { certNotBefore, certNotAfter };
+  } catch {
+    return { certNotBefore: null, certNotAfter: null };
+  }
+}
+
 async function loadRepoMatches(pathLike: string): Promise<RepoMatchesFile> {
   const abs = toAbsolutePath(pathLike);
   try {
@@ -858,11 +882,14 @@ async function main() {
         const previousBound = existingAtIndex?.checkpointTreeSizeUpperBound;
         const keepPrevious =
           typeof previousBound === "number" && previousBound > 0 && previousBound < currentBound;
+        const certWindow = extractCertNotBeforeAfterFromDsseCert(found.entry);
         byIndex.set(m.logIndex, {
           logIndex: m.logIndex,
           repo: m.repo,
           certIdentityUri: extractFirstGithubIdentityUriFromDsseCert(found.entry),
           payloadHashDigest: extractDssePayloadHashDigest(found.entry),
+          certNotBefore: certWindow.certNotBefore,
+          certNotAfter: certWindow.certNotAfter,
           checkpointTreeSizeUpperBound: keepPrevious ? previousBound : currentBound,
           checkpointEnvelopeUpperBound: keepPrevious
             ? (existingAtIndex?.checkpointEnvelopeUpperBound ?? poll.checkpointEnvelope)
