@@ -132,7 +132,7 @@ CREATE TABLE statement_batch_items (
     batch_root CHAR(64) NOT NULL REFERENCES statement_batches(root) ON DELETE CASCADE,
     statement_fingerprint CHAR(38) NOT NULL REFERENCES statements(statement_fingerprint) ON DELETE CASCADE,
     indexed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    CONSTRAINT uq_statement_batch_items UNIQUE (batch_root, statement_fingerprint)
+    CONSTRAINT pk_statement_batch_items PRIMARY KEY (batch_root, statement_fingerprint)
 );
 
 -- ============================================================================

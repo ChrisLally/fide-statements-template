@@ -17,7 +17,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit",
-    "sb": "dotenv -e .env -- npx supabase gen types typescript --project-id dylicthncptxcsyvivic --schema public > src/types/supabase.ts"
+    "sb": "dotenv -e .env -- npx supabase gen types typescript --project-id dylicthncptxcsyvivic --schema public > src/types/fide-graph-supabase.ts"
   },
   "dependencies": {
     "@fide.work/fcp": "workspace:*",

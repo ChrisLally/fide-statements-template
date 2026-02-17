@@ -1,4 +1,4 @@
-import { boolean, char, index, pgTable, primaryKey, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
+import { boolean, char, index, pgTable, primaryKey, text, timestamp } from 'drizzle-orm/pg-core';
 
 export const rawIdentifiers = pgTable('raw_identifiers', {
   identifierFingerprint: char('identifier_fingerprint', { length: 38 }).primaryKey(),
@@ -37,10 +37,10 @@ export const statementBatchItems = pgTable('statement_batch_items', {
     .references(() => statements.statementFingerprint, { onDelete: 'cascade' }),
   indexedAt: timestamp('indexed_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
-  batchStmtUniqueIdx: uniqueIndex('idx_statement_batch_items_unique').on(
-    table.batchRoot,
-    table.statementFingerprint
-  ),
+  pk: primaryKey({
+    name: 'pk_statement_batch_items',
+    columns: [table.batchRoot, table.statementFingerprint],
+  }),
 }));
 
 export const identityResolutions = pgTable('identity_resolutions', {

@@ -14,7 +14,40 @@ export type Database = {
   }
   public: {
     Tables: {
-      fcp_raw_identifiers: {
+      identity_resolutions: {
+        Row: {
+          computed_at: string
+          method_version: string
+          resolved_fingerprint: string
+          resolved_first_created_at: string
+          run_id: string
+          subject_fingerprint: string
+          subject_source_type: Database["public"]["Enums"]["entity_type"]
+          subject_type: Database["public"]["Enums"]["entity_type"]
+        }
+        Insert: {
+          computed_at?: string
+          method_version: string
+          resolved_fingerprint: string
+          resolved_first_created_at: string
+          run_id: string
+          subject_fingerprint: string
+          subject_source_type: Database["public"]["Enums"]["entity_type"]
+          subject_type: Database["public"]["Enums"]["entity_type"]
+        }
+        Update: {
+          computed_at?: string
+          method_version?: string
+          resolved_fingerprint?: string
+          resolved_first_created_at?: string
+          run_id?: string
+          subject_fingerprint?: string
+          subject_source_type?: Database["public"]["Enums"]["entity_type"]
+          subject_type?: Database["public"]["Enums"]["entity_type"]
+        }
+        Relationships: []
+      }
+      raw_identifiers: {
         Row: {
           identifier_fingerprint: string
           raw_identifier: string
@@ -29,7 +62,7 @@ export type Database = {
         }
         Relationships: []
       }
-      fcp_statement_batch_items: {
+      statement_batch_items: {
         Row: {
           batch_root: string
           indexed_at: string
@@ -47,29 +80,22 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "fcp_statement_batch_items_batch_root_fkey"
+            foreignKeyName: "statement_batch_items_batch_root_fkey"
             columns: ["batch_root"]
             isOneToOne: false
-            referencedRelation: "fcp_statement_batches"
+            referencedRelation: "statement_batches"
             referencedColumns: ["root"]
           },
           {
-            foreignKeyName: "fcp_statement_batch_items_statement_fingerprint_fkey"
+            foreignKeyName: "statement_batch_items_statement_fingerprint_fkey"
             columns: ["statement_fingerprint"]
             isOneToOne: false
-            referencedRelation: "fcp_statements"
-            referencedColumns: ["statement_fingerprint"]
-          },
-          {
-            foreignKeyName: "fcp_statement_batch_items_statement_fingerprint_fkey"
-            columns: ["statement_fingerprint"]
-            isOneToOne: false
-            referencedRelation: "fcp_statements_identifiers_resolved"
+            referencedRelation: "statements"
             referencedColumns: ["statement_fingerprint"]
           },
         ]
       }
-      fcp_statement_batches: {
+      statement_batches: {
         Row: {
           first_seen_at: string
           github_run: string
@@ -96,93 +122,54 @@ export type Database = {
         }
         Relationships: []
       }
-      fcp_statements: {
+      statements: {
         Row: {
           first_created_at: string
           object_fingerprint: string
-          object_source_type: Database["public"]["Enums"]["fcp_entity_type"]
-          object_type: Database["public"]["Enums"]["fcp_entity_type"]
+          object_source_type: Database["public"]["Enums"]["entity_type"]
+          object_type: Database["public"]["Enums"]["entity_type"]
           predicate_fingerprint: string
-          predicate_source_type: Database["public"]["Enums"]["fcp_entity_type"]
-          predicate_type: Database["public"]["Enums"]["fcp_statement_predicate_type"]
           statement_fingerprint: string
           subject_fingerprint: string
-          subject_source_type: Database["public"]["Enums"]["fcp_entity_type"]
-          subject_type: Database["public"]["Enums"]["fcp_entity_type"]
+          subject_source_type: Database["public"]["Enums"]["entity_type"]
+          subject_type: Database["public"]["Enums"]["entity_type"]
         }
         Insert: {
           first_created_at?: string
           object_fingerprint: string
-          object_source_type: Database["public"]["Enums"]["fcp_entity_type"]
-          object_type: Database["public"]["Enums"]["fcp_entity_type"]
+          object_source_type: Database["public"]["Enums"]["entity_type"]
+          object_type: Database["public"]["Enums"]["entity_type"]
           predicate_fingerprint: string
-          predicate_source_type: Database["public"]["Enums"]["fcp_entity_type"]
-          predicate_type: Database["public"]["Enums"]["fcp_statement_predicate_type"]
           statement_fingerprint: string
           subject_fingerprint: string
-          subject_source_type: Database["public"]["Enums"]["fcp_entity_type"]
-          subject_type: Database["public"]["Enums"]["fcp_entity_type"]
+          subject_source_type: Database["public"]["Enums"]["entity_type"]
+          subject_type: Database["public"]["Enums"]["entity_type"]
         }
         Update: {
           first_created_at?: string
           object_fingerprint?: string
-          object_source_type?: Database["public"]["Enums"]["fcp_entity_type"]
-          object_type?: Database["public"]["Enums"]["fcp_entity_type"]
+          object_source_type?: Database["public"]["Enums"]["entity_type"]
+          object_type?: Database["public"]["Enums"]["entity_type"]
           predicate_fingerprint?: string
-          predicate_source_type?: Database["public"]["Enums"]["fcp_entity_type"]
-          predicate_type?: Database["public"]["Enums"]["fcp_statement_predicate_type"]
           statement_fingerprint?: string
           subject_fingerprint?: string
-          subject_source_type?: Database["public"]["Enums"]["fcp_entity_type"]
-          subject_type?: Database["public"]["Enums"]["fcp_entity_type"]
+          subject_source_type?: Database["public"]["Enums"]["entity_type"]
+          subject_type?: Database["public"]["Enums"]["entity_type"]
         }
         Relationships: []
       }
     }
     Views: {
-      fcp_statements_identifiers_resolved: {
-        Row: {
-          object_fingerprint: string | null
-          object_fingerprint_original: string | null
-          object_raw_identifier: string | null
-          object_raw_identifier_original: string | null
-          object_source_type:
-            | Database["public"]["Enums"]["fcp_entity_type"]
-            | null
-          object_source_type_original:
-            | Database["public"]["Enums"]["fcp_entity_type"]
-            | null
-          object_type: Database["public"]["Enums"]["fcp_entity_type"] | null
-          predicate_fingerprint: string | null
-          predicate_raw_identifier: string | null
-          predicate_source_type:
-            | Database["public"]["Enums"]["fcp_entity_type"]
-            | null
-          predicate_type:
-            | Database["public"]["Enums"]["fcp_statement_predicate_type"]
-            | null
-          statement_fingerprint: string | null
-          subject_fingerprint: string | null
-          subject_fingerprint_original: string | null
-          subject_raw_identifier: string | null
-          subject_raw_identifier_original: string | null
-          subject_source_type:
-            | Database["public"]["Enums"]["fcp_entity_type"]
-            | null
-          subject_source_type_original:
-            | Database["public"]["Enums"]["fcp_entity_type"]
-            | null
-          subject_type: Database["public"]["Enums"]["fcp_entity_type"] | null
-        }
-        Relationships: []
-      }
-    }
-    Functions: {
       [_ in never]: never
     }
+    Functions: {
+      refresh_fcp_statements_identifiers_resolved: {
+        Args: never
+        Returns: undefined
+      }
+    }
     Enums: {
-      fcp_entity_type: "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7"
-      fcp_statement_predicate_type: "6"
+      entity_type: "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -310,8 +297,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      fcp_entity_type: ["0", "1", "2", "3", "4", "5", "6", "7"],
-      fcp_statement_predicate_type: ["6"],
+      entity_type: ["0", "1", "2", "3", "4", "5", "6", "7"],
     },
   },
 } as const

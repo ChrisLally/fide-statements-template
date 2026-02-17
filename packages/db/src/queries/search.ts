@@ -44,22 +44,26 @@ export async function searchGraph(input: SearchGraphInput): Promise<{
   }>`
     with entities as (
       select
-        subject_type as entity_type,
-        subject_source_type as entity_source_type,
-        subject_fingerprint as entity_fingerprint,
-        subject_raw_identifier as raw_identifier
-      from fcp_statements_identifiers_resolved
-      where subject_source_type_original <> '0'
-        and object_source_type_original <> '0'
+        s.subject_type as entity_type,
+        s.subject_source_type as entity_source_type,
+        s.subject_fingerprint as entity_fingerprint,
+        subj_ident.raw_identifier as raw_identifier
+      from statements s
+      inner join raw_identifiers subj_ident
+        on subj_ident.identifier_fingerprint = s.subject_fingerprint
+      where s.subject_source_type <> '0'
+        and s.object_source_type <> '0'
       union
       select
-        object_type as entity_type,
-        object_source_type as entity_source_type,
-        object_fingerprint as entity_fingerprint,
-        object_raw_identifier as raw_identifier
-      from fcp_statements_identifiers_resolved
-      where subject_source_type_original <> '0'
-        and object_source_type_original <> '0'
+        s.object_type as entity_type,
+        s.object_source_type as entity_source_type,
+        s.object_fingerprint as entity_fingerprint,
+        obj_ident.raw_identifier as raw_identifier
+      from statements s
+      inner join raw_identifiers obj_ident
+        on obj_ident.identifier_fingerprint = s.object_fingerprint
+      where s.subject_source_type <> '0'
+        and s.object_source_type <> '0'
     )
     select distinct on (entity_fingerprint)
       entity_type,
