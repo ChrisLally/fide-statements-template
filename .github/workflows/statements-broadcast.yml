@@ -11,17 +11,13 @@ on:
 
 permissions:
   contents: read
-  id-token: write
-  attestations: write
+  
 
 jobs:
   notify:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Attest Build Provenance
-        uses: actions/attest-build-provenance@v3.2.0
-        
       - name: Checkout
         uses: actions/checkout@v4
         with:
