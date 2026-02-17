@@ -10,6 +10,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   batchStatementsWithRoot,
+  type StatementInput,
 } from "@fide.work/fcp";
 import { loadDemoEnv } from "../lib/env.js";
 
@@ -29,7 +30,7 @@ function getUTCDatePartition(date: Date): string {
 async function main() {
   console.log("🌱 Seeding statements-only batch...\n");
 
-  const { statements, root } = await batchStatementsWithRoot([
+  const baseStatements: StatementInput[] = [
     {
       subject: {
         rawIdentifier: "https://x.com/microsoft",
@@ -59,11 +60,155 @@ async function main() {
         sourceType: "Product",
       },
       object: {
+        rawIdentifier: "https://en.wikipedia.org/wiki/Project_Prometheus_(company)",
+        entityType: "Organization",
+        sourceType: "Product",
+      },
+    },
+    {
+      subject: {
+        rawIdentifier: "https://x.com/jeffbezos1",
+        entityType: "Person",
+        sourceType: "Product",
+      },
+      predicate: {
+        rawIdentifier: "https://schema.org/worksFor",
+        entityType: "CreativeWork",
+        sourceType: "Product",
+      },
+      object: {
+        rawIdentifier: "jeff-bezos-ceo-tenure-cadabra-inc-wa-renamed-amazon-merged-amazon-de-1994-2021",
+        entityType: "Event",
+        sourceType: "CreativeWork",
+      },
+    },
+    {
+      subject: {
+        rawIdentifier: "https://en.wikipedia.org/wiki/Satya_Nadella",
+        entityType: "Person",
+        sourceType: "Product",
+      },
+      predicate: {
+        rawIdentifier: "https://schema.org/worksFor",
+        entityType: "CreativeWork",
+        sourceType: "Product",
+      },
+      object: {
         rawIdentifier: "https://x.com/microsoft",
         entityType: "Organization",
         sourceType: "Product",
       },
     },
+  ];
+
+  const sameAsStatements: StatementInput[] = [
+    {
+      subject: {
+        rawIdentifier: "https://en.wikipedia.org/wiki/Project_Prometheus_(company)",
+        entityType: "Organization",
+        sourceType: "Product",
+      },
+      predicate: {
+        rawIdentifier: "https://www.w3.org/2002/07/owl#sameAs",
+        entityType: "CreativeWork",
+        sourceType: "Product",
+      },
+      object: {
+        rawIdentifier: "https://www.crunchbase.com/organization/project-prometheus",
+        entityType: "Organization",
+        sourceType: "Product",
+      },
+    },
+    {
+      subject: {
+        rawIdentifier: "https://x.com/jeffbezos",
+        entityType: "Person",
+        sourceType: "Product",
+      },
+      predicate: {
+        rawIdentifier: "https://www.w3.org/2002/07/owl#sameAs",
+        entityType: "CreativeWork",
+        sourceType: "Product",
+      },
+      object: {
+        rawIdentifier: "https://www.instagram.com/jeffbezos",
+        entityType: "Person",
+        sourceType: "Product",
+      },
+    },
+    {
+      subject: {
+        rawIdentifier: "https://x.com/jeffbezos",
+        entityType: "Person",
+        sourceType: "Product",
+      },
+      predicate: {
+        rawIdentifier: "https://www.w3.org/2002/07/owl#sameAs",
+        entityType: "CreativeWork",
+        sourceType: "Product",
+      },
+      object: {
+        rawIdentifier: "https://www.crunchbase.com/person/jeff-bezos",
+        entityType: "Person",
+        sourceType: "Product",
+      },
+    },
+    {
+      subject: {
+        rawIdentifier: "https://x.com/jeffbezos",
+        entityType: "Person",
+        sourceType: "Product",
+      },
+      predicate: {
+        rawIdentifier: "https://www.w3.org/2002/07/owl#sameAs",
+        entityType: "CreativeWork",
+        sourceType: "Product",
+      },
+      object: {
+        rawIdentifier: "https://en.wikipedia.org/wiki/Jeff_Bezos",
+        entityType: "Person",
+        sourceType: "Product",
+      },
+    },
+    {
+      subject: {
+        rawIdentifier: "https://x.com/jeffbezos",
+        entityType: "Person",
+        sourceType: "Product",
+      },
+      predicate: {
+        rawIdentifier: "https://www.w3.org/2002/07/owl#sameAs",
+        entityType: "CreativeWork",
+        sourceType: "Product",
+      },
+      object: {
+        rawIdentifier: "https://www.wikidata.org/wiki/Q312556",
+        entityType: "Person",
+        sourceType: "Product",
+      },
+    },
+    {
+      subject: {
+        rawIdentifier: "https://en.wikipedia.org/wiki/Satya_Nadella",
+        entityType: "Person",
+        sourceType: "Product",
+      },
+      predicate: {
+        rawIdentifier: "https://www.w3.org/2002/07/owl#sameAs",
+        entityType: "CreativeWork",
+        sourceType: "Product",
+      },
+      object: {
+        rawIdentifier: "https://x.com/satyanadella",
+        entityType: "Person",
+        sourceType: "Product",
+      },
+    },
+  ];
+
+  const { statements, root } = await batchStatementsWithRoot([
+    ...baseStatements,
+    ...sameAsStatements,
   ]);
 
   const now = new Date();
