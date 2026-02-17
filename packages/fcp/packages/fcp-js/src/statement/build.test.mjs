@@ -130,8 +130,121 @@ try {
     failures += 1;
     console.error("  ❌ Should have rejected shorthand predicate");
 } catch (error) {
-    if (error.message?.includes('canonical full URL')) {
+    if (error.message?.includes('canonical full URL') || error.message?.includes('Expected https URL')) {
         console.log("  ✅ Correctly rejected shorthand predicate");
+    } else {
+        failures += 1;
+        console.error("  ❌ Wrong error:", error.message);
+    }
+}
+
+// Test 6: Normalize predicate URL scheme/host case
+console.log("\n6. Testing predicate URL normalization...");
+checks += 1;
+try {
+    const statement = await createStatement({
+        subject: { rawIdentifier: "https://x.com/alice", entityType: "Person", sourceType: "Product" },
+        predicate: { rawIdentifier: "HTTPS://SCHEMA.ORG/name?query=A#Frag", entityType: "CreativeWork", sourceType: "Product" },
+        object: { rawIdentifier: "Alice", entityType: "CreativeWork", sourceType: "CreativeWork" }
+    });
+
+    if (statement.predicateRawIdentifier === "https://schema.org/name?query=A#Frag") {
+        console.log("  ✅ Correctly normalized predicate URL");
+    } else {
+        failures += 1;
+        console.error("  ❌ Unexpected normalized URL:", statement.predicateRawIdentifier);
+    }
+} catch (error) {
+    failures += 1;
+    console.error("  ❌ Error:", error.message);
+}
+
+// Test 7: Reject non-https predicate URL
+console.log("\n7. Testing rejection of non-https predicate URL...");
+checks += 1;
+try {
+    await createStatement({
+        subject: { rawIdentifier: "https://x.com/alice", entityType: "Person", sourceType: "Product" },
+        predicate: { rawIdentifier: "http://schema.org/name", entityType: "CreativeWork", sourceType: "Product" },
+        object: { rawIdentifier: "Alice", entityType: "CreativeWork", sourceType: "CreativeWork" }
+    });
+    failures += 1;
+    console.error("  ❌ Should have rejected non-https predicate URL");
+} catch (error) {
+    if (error.message?.includes("Expected https URL")) {
+        console.log("  ✅ Correctly rejected non-https predicate URL");
+    } else {
+        failures += 1;
+        console.error("  ❌ Wrong error:", error.message);
+    }
+}
+
+// Test 8: Normalize URL-like subject/object raw identifiers
+console.log("\n8. Testing subject/object URL-like normalization...");
+checks += 1;
+try {
+    const statement = await createStatement({
+        subject: { rawIdentifier: "HTTPS://X.COM:443/JeffBezos", entityType: "Person", sourceType: "Product" },
+        predicate: { rawIdentifier: "https://schema.org/sameAs", entityType: "CreativeWork", sourceType: "Product" },
+        object: { rawIdentifier: "HTTP://EXAMPLE.COM:80/Profile", entityType: "CreativeWork", sourceType: "CreativeWork" }
+    });
+
+    if (statement.subjectRawIdentifier !== "https://x.com/JeffBezos") {
+        failures += 1;
+        console.error("  ❌ Unexpected normalized subject URL:", statement.subjectRawIdentifier);
+    } else if (statement.objectRawIdentifier !== "http://example.com/Profile") {
+        failures += 1;
+        console.error("  ❌ Unexpected normalized object URL:", statement.objectRawIdentifier);
+    } else {
+        console.log("  ✅ Correctly normalized subject/object URL-like values");
+    }
+} catch (error) {
+    failures += 1;
+    console.error("  ❌ Error:", error.message);
+}
+
+// Test 9: Skip URL normalization when requested
+console.log("\n9. Testing ifSkipNormalizeUrl behavior...");
+checks += 1;
+try {
+    const statement = await createStatement({
+        subject: { rawIdentifier: "HTTPS://X.COM:443/JeffBezos", entityType: "Person", sourceType: "Product" },
+        predicate: { rawIdentifier: "https://SCHEMA.ORG/name", entityType: "CreativeWork", sourceType: "Product" },
+        object: { rawIdentifier: "HTTP://EXAMPLE.COM:80/Profile", entityType: "CreativeWork", sourceType: "CreativeWork" },
+        ifSkipNormalizeUrl: true
+    });
+
+    if (statement.subjectRawIdentifier !== "HTTPS://X.COM:443/JeffBezos") {
+        failures += 1;
+        console.error("  ❌ Subject should not have been normalized:", statement.subjectRawIdentifier);
+    } else if (statement.objectRawIdentifier !== "HTTP://EXAMPLE.COM:80/Profile") {
+        failures += 1;
+        console.error("  ❌ Object should not have been normalized:", statement.objectRawIdentifier);
+    } else if (statement.predicateRawIdentifier !== "https://SCHEMA.ORG/name") {
+        failures += 1;
+        console.error("  ❌ Predicate should not have been normalized:", statement.predicateRawIdentifier);
+    } else {
+        console.log("  ✅ Correctly skipped URL normalization");
+    }
+} catch (error) {
+    failures += 1;
+    console.error("  ❌ Error:", error.message);
+}
+
+// Test 10: Reject invalid predicate URL
+console.log("\n10. Testing rejection of invalid predicate URL...");
+checks += 1;
+try {
+    await createStatement({
+        subject: { rawIdentifier: "https://x.com/alice", entityType: "Person", sourceType: "Product" },
+        predicate: { rawIdentifier: "not-a-url", entityType: "CreativeWork", sourceType: "Product" },
+        object: { rawIdentifier: "Alice", entityType: "CreativeWork", sourceType: "CreativeWork" }
+    });
+    failures += 1;
+    console.error("  ❌ Should have rejected invalid predicate URL");
+} catch (error) {
+    if (error.message?.includes("canonical full URL")) {
+        console.log("  ✅ Correctly rejected invalid predicate URL");
     } else {
         failures += 1;
         console.error("  ❌ Wrong error:", error.message);

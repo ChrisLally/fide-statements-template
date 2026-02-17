@@ -14,7 +14,12 @@ import type {
     FideStatementPredicateEntityType,
     FideStatementPredicateSourceType
 } from "../fide-id/types.js";
-import { assertStatementFideIdsPolicy, assertStatementInputPolicy } from "./policy.js";
+import {
+    assertStatementFideIdsPolicy,
+    assertStatementInputPolicy,
+    normalizeIfUrlLike,
+    normalizePredicateRawIdentifier
+} from "./policy.js";
 import { createHash } from "node:crypto";
 
 /**
@@ -38,6 +43,8 @@ export interface StatementInput {
     };
     /** Object - raw identifier with entity type and source type */
     object: { rawIdentifier: string; entityType: FideEntityType; sourceType: FideEntityType };
+    /** If true, skip URL normalization for raw identifiers while keeping predicate URL validation. */
+    ifSkipNormalizeUrl?: boolean;
 }
 
 /**
@@ -89,19 +96,18 @@ export interface StatementBatchWithRoot {
  */
 export async function createStatement(input: StatementInput): Promise<Statement> {
     assertStatementInputPolicy(input);
+    const ifSkipNormalizeUrl = input.ifSkipNormalizeUrl === true;
+    const subjectRawIdentifier = normalizeIfUrlLike(input.subject.rawIdentifier, ifSkipNormalizeUrl);
+    const predicateRawIdentifier = normalizePredicateRawIdentifier(input.predicate.rawIdentifier, ifSkipNormalizeUrl);
+    const objectRawIdentifier = normalizeIfUrlLike(input.object.rawIdentifier, ifSkipNormalizeUrl);
 
     const subjectFideId = await calculateFideId(
         input.subject.entityType,
         input.subject.sourceType,
-        input.subject.rawIdentifier
+        subjectRawIdentifier
     );
-    const subjectRawIdentifier = input.subject.rawIdentifier;
 
-    let predicateFideId: FideId;
-    let predicateRawIdentifier: string;
-
-    predicateRawIdentifier = input.predicate.rawIdentifier;
-    predicateFideId = await calculateFideId(
+    const predicateFideId: FideId = await calculateFideId(
         input.predicate.entityType,
         input.predicate.sourceType,
         predicateRawIdentifier
@@ -110,9 +116,8 @@ export async function createStatement(input: StatementInput): Promise<Statement>
     const objectFideId = await calculateFideId(
         input.object.entityType,
         input.object.sourceType,
-        input.object.rawIdentifier
+        objectRawIdentifier
     );
-    const objectRawIdentifier = input.object.rawIdentifier;
 
     assertStatementFideIdsPolicy(subjectFideId, predicateFideId, objectFideId);
 

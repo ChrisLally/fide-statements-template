@@ -104,11 +104,120 @@ export function assertStatementInputPolicy(input: StatementInput): void {
         );
     }
 
-    if (!input.predicate.rawIdentifier.includes("://")) {
+    // Predicate URL validity/canonicalization is enforced by normalizePredicateRawIdentifier()
+    // in the statement building path.
+}
+
+/**
+ * Normalize rawIdentifier only when it is URL-like (http/https).
+ *
+ * Rules for URL-like values:
+ * - must parse as an absolute URL
+ * - lowercase scheme + host
+ * - remove default ports (80 for http, 443 for https)
+ * - preserve path/query/fragment case
+ *
+ * Non URL-like values are returned unchanged.
+ */
+export function normalizeIfUrlLike(rawIdentifier: string, ifSkipNormalizeUrl = false): string {
+    if (ifSkipNormalizeUrl) {
+        return rawIdentifier;
+    }
+
+    if (!/^https?:\/\//i.test(rawIdentifier)) {
+        return rawIdentifier;
+    }
+
+    let url: URL;
+    try {
+        url = new URL(rawIdentifier);
+    } catch {
         throw new Error(
-            `Invalid predicate rawIdentifier: ${input.predicate.rawIdentifier}. Expected canonical full URL (e.g. https://schema.org/name).`
+            `Invalid URL-like rawIdentifier: ${rawIdentifier}. Expected absolute URL when using http(s) format.`
         );
     }
+
+    const protocol = url.protocol.toLowerCase();
+    if (protocol !== "http:" && protocol !== "https:") {
+        return rawIdentifier;
+    }
+
+    url.protocol = protocol;
+    url.hostname = url.hostname.toLowerCase();
+    if ((protocol === "https:" && url.port === "443") || (protocol === "http:" && url.port === "80")) {
+        url.port = "";
+    }
+
+    return url.toString();
+}
+
+/**
+ * Canonicalize and validate predicate rawIdentifier URLs.
+ *
+ * Policy:
+ * - must be an absolute URL
+ * - must use https
+ * - username/password are not allowed
+ * - normalize scheme + host case only
+ * - remove default https port (443)
+ * - preserve path/query/fragment case
+ */
+export function normalizePredicateRawIdentifier(rawIdentifier: string, ifSkipNormalizeUrl = false): string {
+    if (ifSkipNormalizeUrl) {
+        let skipUrl: URL;
+        try {
+            skipUrl = new URL(rawIdentifier);
+        } catch {
+            throw new Error(
+                `Invalid predicate rawIdentifier: ${rawIdentifier}. Expected canonical full URL (e.g. https://schema.org/name).`
+            );
+        }
+
+        if (skipUrl.protocol.toLowerCase() !== "https:") {
+            throw new Error(
+                `Invalid predicate rawIdentifier protocol: ${rawIdentifier}. Expected https URL.`
+            );
+        }
+
+        if (skipUrl.username || skipUrl.password) {
+            throw new Error(
+                `Invalid predicate rawIdentifier: ${rawIdentifier}. URL userinfo is not allowed.`
+            );
+        }
+
+        return rawIdentifier;
+    }
+
+    const normalized = normalizeIfUrlLike(rawIdentifier, ifSkipNormalizeUrl);
+
+    let url: URL;
+    try {
+        url = new URL(normalized);
+    } catch {
+        throw new Error(
+            `Invalid predicate rawIdentifier: ${rawIdentifier}. Expected canonical full URL (e.g. https://schema.org/name).`
+        );
+    }
+
+    if (url.protocol.toLowerCase() !== "https:") {
+        throw new Error(
+            `Invalid predicate rawIdentifier protocol: ${rawIdentifier}. Expected https URL.`
+        );
+    }
+
+    if (url.username || url.password) {
+        throw new Error(
+            `Invalid predicate rawIdentifier: ${rawIdentifier}. URL userinfo is not allowed.`
+        );
+    }
+
+    url.protocol = "https:";
+    url.hostname = url.hostname.toLowerCase();
+    if (url.port === "443") {
+        url.port = "";
+    }
+
+    return url.toString();
 }
 
 /**
