@@ -5,7 +5,8 @@
   "type": "module",
   "description": "Fide Context Protocol statements template — writes statement batches to .fide/statements/",
   "scripts": {
-    "seed": "tsx src/scripts/seed.ts"
+    "seed": "tsx src/scripts/seed.ts",
+    "evaluate:sameas": "tsx src/scripts/evaluate-sameas.ts"
   },
   "dependencies": {
     "@fide.work/fcp": "workspace:*",
