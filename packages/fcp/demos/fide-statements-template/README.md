@@ -14,6 +14,7 @@ From repo root:
 ```bash
 pnpm demo:fide-statements-template:seed
 pnpm demo:fide-statements-template:evaluate:sameas
+pnpm demo:fide-statements-template:trigger:evaluation
 ```
 
 ## GitHub Action
@@ -41,3 +42,14 @@ Behavior:
 - Runs `evaluate:sameas` to emit evaluation event + citation statements into `.fide/statements/**`
 - Optionally commits and pushes generated files (default: on)
 - The push then triggers `statements-webhook.yml`
+
+### Local trigger helper
+
+`trigger:evaluation` dispatches `evaluations.yml` through the GitHub API using `FIDE_GH_PUSH_TOKEN`.
+
+Optional local env overrides:
+- `FIDE_EVAL_REPO_OWNER` (default: `ChrisLally`)
+- `FIDE_EVAL_REPO_NAME` (default: `fide-statements-template`)
+- `FIDE_EVAL_WORKFLOW_ID` (default: `evaluations.yml`)
+- `FIDE_EVAL_REF` (default: `main`)
+- `FIDE_EVAL_COMMIT_RESULTS` (default: `true`)
