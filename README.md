@@ -7,6 +7,7 @@ Minimal Fide Context Protocol template for publishing statement batches only.
 - Writes statement batches to `.fide/statements/YYYY/MM/DD/{batchHash}.jsonl`
 - Broadcasts from GitHub Actions when new statement files are added
 
+
 ## Local usage
 
 From repo root:
