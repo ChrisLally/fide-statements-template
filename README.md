@@ -5,7 +5,7 @@ Minimal Fide Context Protocol template for publishing statement batches only.
 ## What this template does
 
 - Writes statement batches to `.fide/statements/YYYY/MM/DD/{batchHash}.jsonl`
-- Notifies a webhook from GitHub Actions when new statement files are added
+- Broadcasts from GitHub Actions when new statement files are added
 
 ## Local usage
 
@@ -26,7 +26,8 @@ Workflow file:
 
 Required secret:
 
-- `FIDE_WEBHOOK_URL`
+- `FIDE_BROADCAST_URL`
+- `FIDE_BROADCAST_API_KEY` (optional if using OIDC Bearer auth)
 - `FIDE_GH_PUSH_TOKEN` (for evaluations workflow commit/push step)
 
 Behavior:
