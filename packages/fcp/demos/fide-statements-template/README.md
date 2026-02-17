@@ -13,6 +13,7 @@ From repo root:
 
 ```bash
 pnpm demo:fide-statements-template:seed
+pnpm demo:fide-statements-template:evaluate:sameas
 ```
 
 ## GitHub Action
@@ -20,10 +21,12 @@ pnpm demo:fide-statements-template:seed
 Workflow file:
 
 - `.github/workflows/statements-webhook.yml`
+- `.github/workflows/evaluations.yml`
 
 Required secret:
 
 - `FIDE_WEBHOOK_URL`
+- `FIDE_GH_PUSH_TOKEN` (for evaluations workflow commit/push step)
 
 Behavior:
 
@@ -31,3 +34,10 @@ Behavior:
 - Processes only newly added `*.jsonl` files
 - Fails if statement files are modified/deleted/renamed
 - Sends `repo`, `sha`, `runId`, and `items[]` (`path`, `root`, `sha256`) to webhook
+
+## Evaluations workflow (API-only trigger)
+
+- `evaluations.yml` is `workflow_dispatch` only
+- Runs `evaluate:sameas` to emit evaluation event + citation statements into `.fide/statements/**`
+- Optionally commits and pushes generated files (default: on)
+- The push then triggers `statements-webhook.yml`

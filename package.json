@@ -13,6 +13,7 @@
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types",
     "demo:fide-statements-template:seed": "pnpm --filter fide-statements-template seed",
+    "demo:fide-statements-template:evaluate:sameas": "pnpm --filter fide-statements-template evaluate:sameas",
     "subtree:fide-attestor-template:push": "bash scripts/subtree/fide-attestor-template-push.sh",
     "subtree:fide-attestor-template:pull": "bash scripts/subtree/fide-attestor-template-pull.sh",
     "subtree:fide-statements-template:push": "bash scripts/subtree/fide-statements-template-push.sh",
