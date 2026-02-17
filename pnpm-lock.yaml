@@ -287,8 +287,8 @@ importers:
   packages/fcp/demos/fide-statements-template:
     dependencies:
       '@fide.work/fcp':
-        specifier: workspace:*
-        version: link:../../packages/fcp-js
+        specifier: 0.0.1-alpha.0
+        version: 0.0.1-alpha.0(viem@2.46.0(typescript@5.9.3)(zod@4.3.6))
       dotenv:
         specifier: ^16.4.7
         version: 16.6.1
@@ -839,6 +839,15 @@ packages:
   '@eslint/plugin-kit@0.4.1':
     resolution: {integrity: sha512-43/qtrDUokr7LJqoF2c3+RInu/t4zfrpYdoSDfYyhg52rwLV6TnOvdG4fXm7IkSB3wErkcmJS9iEhjVtOSEjjA==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
+
+  '@fide.work/fcp@0.0.1-alpha.0':
+    resolution: {integrity: sha512-N0IhxYM7a3jEytxtFtW4Mv/xocLkMrE4/55Ui4VVdNtrWQtonFv+OOhbtylFNgEvhAU3FUD1JxA6kVG2SxYzUg==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      viem: ^2.0.0
+    peerDependenciesMeta:
+      viem:
+        optional: true
 
   '@floating-ui/core@1.7.4':
     resolution: {integrity: sha512-C3HlIdsBxszvm5McXlB8PeOEWfBhcGBTZGkGlWc2U0KFY5IwG5OQEuQ8rq52DZmcHDlPLd+YFBK+cZcytwIFWg==}
@@ -6470,6 +6479,10 @@ snapshots:
     dependencies:
       '@eslint/core': 0.17.0
       levn: 0.4.1
+
+  '@fide.work/fcp@0.0.1-alpha.0(viem@2.46.0(typescript@5.9.3)(zod@4.3.6))':
+    optionalDependencies:
+      viem: 2.46.0(typescript@5.9.3)(zod@4.3.6)
 
   '@floating-ui/core@1.7.4':
     dependencies:
