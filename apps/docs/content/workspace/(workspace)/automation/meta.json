@@ -1,9 +1,0 @@
-{
-  "title": "Automation Workflows",
-  "defaultOpen": false,
-  "pages": [
-    "triggers",
-    "steps",
-    "error-handling"
-  ]
-}

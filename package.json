@@ -1,32 +1,21 @@
 {
-  "name": "fide.work-turbo",
+  "name": "fide-statements-template",
+  "version": "0.1.0",
   "private": true,
+  "type": "module",
+  "description": "Fide Context Protocol statements template — writes statement batches to .fide/statements/",
   "scripts": {
-    "build": "turbo run build",
-    "build:api:prod": "pnpm --filter @fide.work/fcp build && pnpm --filter @fide.work/db build && pnpm --filter @fide.work/graph build && pnpm --filter @fide.work/indexer build && pnpm --filter api build:local",
-    "build:docs:prod": "pnpm --filter @fide.work/fcp build && pnpm --filter docs build",
-    "deploy:api:cf": "pnpm --filter api run deploy:cf",
-    "deploy:api:cf:dry-run": "pnpm --filter api run deploy:cf:dry-run",
-    "sdk:generate": "pnpm --filter docs sdk:generate",
-    "dev": "turbo run dev",
-    "lint": "turbo run lint",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "check-types": "turbo run check-types",
-    "demo:fide-statements-template:seed": "pnpm --filter fide-statements-template seed",
-    "demo:fide-statements-template:evaluate:sameas": "pnpm --filter fide-statements-template evaluate:sameas",
-    "demo:fide-statements-template:trigger:evaluation": "pnpm --filter fide-statements-template trigger:evaluation",
-    "subtree:fide-attestor-template:push": "bash scripts/subtree/fide-attestor-template-push.sh",
-    "subtree:fide-attestor-template:pull": "bash scripts/subtree/fide-attestor-template-pull.sh",
-    "subtree:fide-statements-template:push": "bash scripts/subtree/fide-statements-template-push.sh",
-    "subtree:fide-statements-template:pull": "bash scripts/subtree/fide-statements-template-pull.sh"
+    "seed": "tsx src/scripts/seed.ts",
+    "evaluate:sameas": "tsx src/scripts/evaluate-sameas.ts",
+    "trigger:evaluation": "tsx src/scripts/trigger-evaluation.ts"
+  },
+  "dependencies": {
+    "@fide.work/fcp": "0.0.1-alpha.0",
+    "dotenv": "^16.4.7"
   },
   "devDependencies": {
-    "prettier": "^3.7.4",
-    "turbo": "^2.8.9",
-    "typescript": "5.9.2"
-  },
-  "packageManager": "pnpm@9.0.0",
-  "engines": {
-    "node": ">=18"
+    "@types/node": "^20.11.17",
+    "tsx": "^4.7.1",
+    "typescript": "^5.8.3"
   }
 }

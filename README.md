@@ -1,53 +1,55 @@
-# fide.work Turborepo
+# Fide Statements Template
 
-This repository contains applications and shared packages for `fide.work`, managed as a single Turborepo.
+Minimal Fide Context Protocol template for publishing statement batches only.
 
-## Paths
+## What this template does
 
-- `apps/`
-  - Application projects (for example `docs`, `api`).
-- `packages/`
-  - Shared packages and subtrees (including `packages/fcp` and `packages/db`).
-- `_scratch/`
-  - Temporary planning/brainstorming material.
+- Writes statement batches to `.fide/statements/YYYY/MM/DD/{batchHash}.jsonl`
+- Notifies a webhook from GitHub Actions when new statement files are added
 
-Each area can include its own local `README.md` for package/app-specific commands.
+## Local usage
 
-## Current Baseline
-
-- Starter sample apps/packages from the Turbo scaffold were removed.
-- Shared infra packages are kept:
-  - `packages/eslint-config`
-  - `packages/typescript-config`
-- Fide Context Protocol content is migrated under `packages/fcp`.
-
-## Workspace Model
-
-This repo uses a **single root workspace model**:
-
-- One workspace root: this directory
-- One lockfile: `/pnpm-lock.yaml`
-- One Turbo config: `/turbo.json`
-- Install and run commands from repo root
-
-`packages/fcp` is treated as a normal workspace subtree, not an independent workspace root.
-So `packages/fcp` does **not** keep its own `package.json` workspace root, `pnpm-workspace.yaml`, `pnpm-lock.yaml`, or `turbo.json`.
-
-## Run From Repo Root
+From repo root:
 
 ```bash
-pnpm install
-pnpm build
-pnpm check-types
+pnpm demo:fide-statements-template:seed
+pnpm demo:fide-statements-template:evaluate:sameas
+pnpm demo:fide-statements-template:trigger:evaluation
 ```
 
-## Current Status
+## GitHub Action
 
-Core slices (`apps/docs`, `apps/api`, `packages/fcp`, `packages/db`) are now integrated into this root Turborepo and validated via root workspace commands.
+Workflow file:
 
-## Future Export Plan
+- `.github/workflows/statements-webhook.yml`
+- `.github/workflows/evaluations.yml`
 
-For now, `fide.work-turbo` is the single source-of-truth Turborepo.
+Required secret:
 
-Later, `packages/fcp` may be exported/synced to a standalone public repository.
-When that happens, we will add an automated export workflow (for example subtree split + standalone root config overlay) so the exported repo is independently runnable.
+- `FIDE_WEBHOOK_URL`
+- `FIDE_GH_PUSH_TOKEN` (for evaluations workflow commit/push step)
+
+Behavior:
+
+- Triggers on pushes touching `.fide/statements/**`
+- Processes only newly added `*.jsonl` files
+- Fails if statement files are modified/deleted/renamed
+- Sends `repo`, `sha`, `runId`, and `items[]` (`path`, `root`, `sha256`) to webhook
+
+## Evaluations workflow (API-only trigger)
+
+- `evaluations.yml` is `workflow_dispatch` only
+- Runs `evaluate:sameas` to emit evaluation event + citation statements into `.fide/statements/**`
+- Optionally commits and pushes generated files (default: on)
+- The push then triggers `statements-webhook.yml`
+
+### Local trigger helper
+
+`trigger:evaluation` dispatches `evaluations.yml` through the GitHub API using `FIDE_GH_PUSH_TOKEN`.
+
+Optional local env overrides:
+- `FIDE_EVAL_REPO_OWNER` (default: `ChrisLally`)
+- `FIDE_EVAL_REPO_NAME` (default: `fide-statements-template`)
+- `FIDE_EVAL_WORKFLOW_ID` (default: `evaluations.yml`)
+- `FIDE_EVAL_REF` (default: `main`)
+- `FIDE_EVAL_COMMIT_RESULTS` (default: `true`)

@@ -1,9 +1,0 @@
-{
-  "title": "Dispatch Engine",
-  "defaultOpen": false,
-  "pages": [
-    "dispatch-strategy.int",
-    "task-dispatch",
-    "reliability"
-  ]
-}

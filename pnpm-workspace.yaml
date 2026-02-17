@@ -1,7 +1,0 @@
-packages:
-  - "apps/*"
-  - "packages/*"
-  - "packages/*/apps/*"
-  - "packages/*/packages/*"
-  - "packages/*/demos/*"
-  - "packages/*/demos/*/*"

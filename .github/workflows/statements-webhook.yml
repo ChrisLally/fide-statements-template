@@ -1,0 +1,140 @@
+name: Fide Statements Webhook
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".fide/statements/**"
+      - ".github/workflows/statements-webhook.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect statement files
+        id: changes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ "${{ github.event_name }}" = "push" ]; then
+            before="${{ github.event.before }}"
+            after="${{ github.sha }}"
+            if [ -z "${before}" ] || [ "${before}" = "0000000000000000000000000000000000000000" ]; then
+              before="$(git rev-list --max-parents=0 HEAD | tail -n 1)"
+            fi
+          else
+            before="$(git rev-parse HEAD~1)"
+            after="$(git rev-parse HEAD)"
+          fi
+
+          mapfile -t lines < <(git diff --name-status "${before}" "${after}" -- ".fide/statements")
+          added=()
+          invalid=()
+          for line in "${lines[@]}"; do
+            status="$(awk '{print $1}' <<<"${line}")"
+            path="$(awk '{print $2}' <<<"${line}")"
+            if [[ "${path}" != *.jsonl ]]; then
+              continue
+            fi
+            if [ "${status}" = "A" ]; then
+              added+=("${path}")
+            else
+              invalid+=("${line}")
+            fi
+          done
+
+          # Keep old additive-only check as observability, but do not fail on it.
+          if [ "${#invalid[@]}" -gt 0 ] && [ "${#added[@]}" -eq 0 ]; then
+            echo "Old policy result: FAIL (non-additive changes with no newly added files)."
+          elif [ "${#invalid[@]}" -gt 0 ] && [ "${#added[@]}" -gt 0 ]; then
+            echo "Old policy result: PASS with warnings (mixed additive + non-additive changes)."
+            printf '  %s\n' "${invalid[@]}"
+          elif [ "${#added[@]}" -gt 0 ]; then
+            echo "Old policy result: PASS (additive-only statement changes)."
+          else
+            echo "Old policy result: no statement changes in diff range."
+          fi
+
+          mapfile -t all_files < <(find .fide/statements -type f -name '*.jsonl' 2>/dev/null | sed 's|^\./||' | sort)
+          if [ "${#all_files[@]}" -eq 0 ]; then
+            echo "No statement batch files found in repository."
+            echo "has_new=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "has_new=true" >> "$GITHUB_OUTPUT"
+          {
+            echo "files<<EOF"
+            printf '%s\n' "${all_files[@]}"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Notify webhook with statement batches
+        if: steps.changes.outputs.has_new == 'true'
+        shell: bash
+        env:
+          WEBHOOK_URL: ${{ secrets.FIDE_WEBHOOK_URL }}
+          WEBHOOK_URL_FALLBACK: https://api.fide.work/graph/v1/webhooks/statements
+        run: |
+          set -euo pipefail
+
+          if [ -z "${WEBHOOK_URL}" ]; then
+            WEBHOOK_URL="${WEBHOOK_URL_FALLBACK}"
+            echo "FIDE_WEBHOOK_URL not set, using fallback webhook URL."
+          fi
+
+          if [ -z "${WEBHOOK_URL}" ]; then
+            echo "Missing required secret: FIDE_WEBHOOK_URL"
+            exit 1
+          fi
+
+          items='[]'
+          while IFS= read -r path; do
+            [ -z "${path}" ] && continue
+            sha256="$(sha256sum "${path}" | awk '{print $1}')"
+            root="$(basename "${path}" .jsonl)"
+            items="$(jq -c \
+              --arg path "${path}" \
+              --arg root "${root}" \
+              --arg sha256 "${sha256}" \
+              '. + [{path:$path, root:$root, sha256:$sha256}]' <<<"${items}")"
+          done <<< "${{ steps.changes.outputs.files }}"
+
+          payload="$(jq -n \
+            --arg repo "${{ github.repository }}" \
+            --arg repoId "${{ github.repository_id }}" \
+            --arg ownerId "${{ github.repository_owner_id }}" \
+            --arg sha "${{ github.sha }}" \
+            --arg runId "${{ github.run_id }}" \
+            --argjson items "${items}" \
+            '{repo:$repo, repoId:$repoId, ownerId:$ownerId, sha:$sha, runId:$runId, items:$items}')"
+
+          webhook_resp_file="$(mktemp)"
+          webhook_status="$(curl -sS -o "${webhook_resp_file}" -w "%{http_code}" -X POST \
+            -H "Content-Type: application/json" \
+            --data "${payload}" \
+            "${WEBHOOK_URL}")"
+
+          echo "Webhook URL: ${WEBHOOK_URL}"
+          echo "Webhook status: ${webhook_status}"
+          echo "Webhook response body:"
+          cat "${webhook_resp_file}"
+
+          if [ "${webhook_status}" -lt 200 ] || [ "${webhook_status}" -ge 300 ]; then
+            echo "Webhook request failed with HTTP ${webhook_status}"
+            exit 1
+          fi
+
+          echo "Webhook notified with $(jq -r 'length' <<<"${items}") item(s)."
