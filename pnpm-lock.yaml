@@ -284,34 +284,6 @@ importers:
         specifier: ^5.8.3
         version: 5.9.3
 
-  packages/fcp/demos/fide-indexer-template:
-    dependencies:
-      '@fide.work/fcp':
-        specifier: workspace:*
-        version: link:../../packages/fcp-js
-      '@supabase/supabase-js':
-        specifier: ^2.95.3
-        version: 2.95.3
-      dotenv:
-        specifier: ^16.4.7
-        version: 16.6.1
-      pg:
-        specifier: ^8.18.0
-        version: 8.18.0
-    devDependencies:
-      '@types/node':
-        specifier: ^20.11.17
-        version: 20.19.33
-      '@types/pg':
-        specifier: ^8.16.0
-        version: 8.16.0
-      tsx:
-        specifier: ^4.7.1
-        version: 4.21.0
-      typescript:
-        specifier: ^5.8.3
-        version: 5.9.3
-
   packages/fcp/demos/fide-statements-template:
     dependencies:
       '@fide.work/fcp':
@@ -8031,6 +8003,7 @@ snapshots:
       '@types/node': 25.2.3
       pg-protocol: 1.11.0
       pg-types: 2.2.0
+    optional: true
 
   '@types/phoenix@1.6.7': {}
 
@@ -11241,15 +11214,19 @@ snapshots:
   pg-cloudflare@1.3.0:
     optional: true
 
-  pg-connection-string@2.11.0: {}
+  pg-connection-string@2.11.0:
+    optional: true
 
-  pg-int8@1.0.1: {}
+  pg-int8@1.0.1:
+    optional: true
 
   pg-pool@3.11.0(pg@8.18.0):
     dependencies:
       pg: 8.18.0
+    optional: true
 
-  pg-protocol@1.11.0: {}
+  pg-protocol@1.11.0:
+    optional: true
 
   pg-types@2.2.0:
     dependencies:
@@ -11258,6 +11235,7 @@ snapshots:
       postgres-bytea: 1.0.1
       postgres-date: 1.0.7
       postgres-interval: 1.2.0
+    optional: true
 
   pg@8.18.0:
     dependencies:
@@ -11268,10 +11246,12 @@ snapshots:
       pgpass: 1.0.5
     optionalDependencies:
       pg-cloudflare: 1.3.0
+    optional: true
 
   pgpass@1.0.5:
     dependencies:
       split2: 4.2.0
+    optional: true
 
   picocolors@1.1.1: {}
 
@@ -11313,15 +11293,19 @@ snapshots:
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
-  postgres-array@2.0.0: {}
+  postgres-array@2.0.0:
+    optional: true
 
-  postgres-bytea@1.0.1: {}
+  postgres-bytea@1.0.1:
+    optional: true
 
-  postgres-date@1.0.7: {}
+  postgres-date@1.0.7:
+    optional: true
 
   postgres-interval@1.2.0:
     dependencies:
       xtend: 4.0.2
+    optional: true
 
   postgres@3.4.8: {}
 
@@ -11901,7 +11885,8 @@ snapshots:
 
   space-separated-tokens@2.0.2: {}
 
-  split2@4.2.0: {}
+  split2@4.2.0:
+    optional: true
 
   sprintf-js@1.0.3: {}
 
@@ -12539,7 +12524,8 @@ snapshots:
     dependencies:
       sax: 1.4.4
 
-  xtend@4.0.2: {}
+  xtend@4.0.2:
+    optional: true
 
   y18n@5.0.8: {}
 
