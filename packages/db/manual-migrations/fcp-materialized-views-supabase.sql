@@ -6,7 +6,7 @@
 -- Current model:
 -- - Materialized view provides a resolved statement projection.
 -- - Predicate rows remain human-readable via raw identifier lookup.
--- - owl:sameAs rows are excluded from the projection (meta-resolution statements).
+-- - https://www.w3.org/2002/07/owl#sameAs rows are excluded from the projection (meta-resolution statements).
 -- - Resolved fields currently mirror original fields (no consensus trust layer here).
 
 -- ============================================================================
@@ -54,7 +54,7 @@ INNER JOIN fcp_raw_identifiers pred_ident
   ON pred_ident.identifier_fingerprint = s.predicate_fingerprint
 INNER JOIN fcp_raw_identifiers obj_ident
   ON obj_ident.identifier_fingerprint = s.object_fingerprint
-WHERE pred_ident.raw_identifier <> 'owl:sameAs';
+WHERE pred_ident.raw_identifier <> 'https://www.w3.org/2002/07/owl#sameAs';
 
 -- ============================================================================
 -- INDEXES FOR MATERIALIZED VIEW
@@ -89,7 +89,7 @@ CREATE INDEX idx_statements_resolved_object_type
 -- MATERIALIZED VIEW COMMENTS
 -- ============================================================================
 COMMENT ON MATERIALIZED VIEW fcp_statements_identifiers_resolved IS
-'Pre-resolved statements projection. Predicates remain human-readable. owl:sameAs rows are excluded from this view. Resolved fields currently mirror original fields.';
+'Pre-resolved statements projection. Predicates remain human-readable. https://www.w3.org/2002/07/owl#sameAs rows are excluded from this view. Resolved fields currently mirror original fields.';
 
 COMMENT ON COLUMN fcp_statements_identifiers_resolved.statement_fingerprint IS '38-char reference to fcp_statements';
 COMMENT ON COLUMN fcp_statements_identifiers_resolved.subject_type IS '1-char entity type';

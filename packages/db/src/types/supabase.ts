@@ -178,7 +178,10 @@ export type Database = {
       }
     }
     Functions: {
-      [_ in never]: never
+      refresh_fcp_statements_identifiers_resolved: {
+        Args: never
+        Returns: undefined
+      }
     }
     Enums: {
       fcp_entity_type: "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7"
