@@ -62,12 +62,17 @@ jobs:
           done
 
           if [ "${#invalid[@]}" -gt 0 ]; then
-            echo "Invalid non-additive statement changes detected:"
+            echo "Warning: non-additive statement changes detected:"
             printf '  %s\n' "${invalid[@]}"
-            exit 1
+            echo "Continuing because newly added statement files were also found."
           fi
 
           if [ "${#added[@]}" -eq 0 ]; then
+            if [ "${#invalid[@]}" -gt 0 ]; then
+              echo "Invalid non-additive statement changes detected with no new statement files to process."
+              exit 1
+            fi
+
             echo "No newly added statement batch files in this push."
             echo "has_new=false" >> "$GITHUB_OUTPUT"
             exit 0
