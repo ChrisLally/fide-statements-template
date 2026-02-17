@@ -22,7 +22,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Detect newly added statement files
+      - name: Detect statement files
         id: changes
         shell: bash
         run: |
@@ -40,12 +40,6 @@ jobs:
           fi
 
           mapfile -t lines < <(git diff --name-status "${before}" "${after}" -- ".fide/statements")
-          if [ "${#lines[@]}" -eq 0 ]; then
-            echo "No statement path changes in this range."
-            echo "has_new=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
           added=()
           invalid=()
           for line in "${lines[@]}"; do
@@ -61,19 +55,21 @@ jobs:
             fi
           done
 
-          if [ "${#invalid[@]}" -gt 0 ]; then
-            echo "Warning: non-additive statement changes detected:"
+          # Keep old additive-only check as observability, but do not fail on it.
+          if [ "${#invalid[@]}" -gt 0 ] && [ "${#added[@]}" -eq 0 ]; then
+            echo "Old policy result: FAIL (non-additive changes with no newly added files)."
+          elif [ "${#invalid[@]}" -gt 0 ] && [ "${#added[@]}" -gt 0 ]; then
+            echo "Old policy result: PASS with warnings (mixed additive + non-additive changes)."
             printf '  %s\n' "${invalid[@]}"
-            echo "Continuing because newly added statement files were also found."
+          elif [ "${#added[@]}" -gt 0 ]; then
+            echo "Old policy result: PASS (additive-only statement changes)."
+          else
+            echo "Old policy result: no statement changes in diff range."
           fi
 
-          if [ "${#added[@]}" -eq 0 ]; then
-            if [ "${#invalid[@]}" -gt 0 ]; then
-              echo "Invalid non-additive statement changes detected with no new statement files to process."
-              exit 1
-            fi
-
-            echo "No newly added statement batch files in this push."
+          mapfile -t all_files < <(find .fide/statements -type f -name '*.jsonl' 2>/dev/null | sed 's|^\./||' | sort)
+          if [ "${#all_files[@]}" -eq 0 ]; then
+            echo "No statement batch files found in repository."
             echo "has_new=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -81,11 +77,11 @@ jobs:
           echo "has_new=true" >> "$GITHUB_OUTPUT"
           {
             echo "files<<EOF"
-            printf '%s\n' "${added[@]}"
+            printf '%s\n' "${all_files[@]}"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Notify webhook with new statement batches
+      - name: Notify webhook with statement batches
         if: steps.changes.outputs.has_new == 'true'
         shell: bash
         env:
