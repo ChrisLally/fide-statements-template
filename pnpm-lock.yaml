@@ -252,6 +252,19 @@ importers:
         specifier: ^8.50.0
         version: 8.50.0(eslint@9.39.1(jiti@2.6.1))(typescript@5.9.2)
 
+  packages/fcp-statement-builders:
+    dependencies:
+      '@fide.work/fcp':
+        specifier: workspace:*
+        version: link:../fcp/packages/fcp-js
+    devDependencies:
+      '@types/node':
+        specifier: ^20.11.17
+        version: 20.19.33
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
+
   packages/fcp/demos/experimental/fide-attestor-template:
     dependencies:
       '@fide.work/fcp':

@@ -2,10 +2,10 @@ import { eq, sql } from 'drizzle-orm';
 import { assertFideId, parseFideId, type Statement } from '@fide.work/fcp';
 import { db } from '../client.js';
 import {
-  fcpRawIdentifiers,
-  fcpStatementBatchItems,
-  fcpStatementBatches,
-  fcpStatements,
+  rawIdentifiers,
+  statementBatchItems,
+  statementBatches,
+  statements,
 } from '../schema.js';
 
 export type RawIdentifierUpsertRow = {
@@ -19,8 +19,6 @@ export type StatementUpsertRow = {
   subjectSourceType: string;
   subjectFingerprint: string;
   predicateFingerprint: string;
-  predicateType: string;
-  predicateSourceType: string;
   objectType: string;
   objectSourceType: string;
   objectFingerprint: string;
@@ -62,8 +60,6 @@ export function normalizeStatementsForIngest(statements: Statement[]): {
       subjectSourceType: subject.sourceChar,
       subjectFingerprint: subject.fingerprint,
       predicateFingerprint: predicate.fingerprint,
-      predicateType: predicate.typeChar,
-      predicateSourceType: predicate.sourceChar,
       objectType: object.typeChar,
       objectSourceType: object.sourceChar,
       objectFingerprint: object.fingerprint,
@@ -82,9 +78,9 @@ export function normalizeStatementsForIngest(statements: Statement[]): {
 
 export async function hasStatementBatchRoot(root: string): Promise<boolean> {
   const rows = await db
-    .select({ root: fcpStatementBatches.root })
-    .from(fcpStatementBatches)
-    .where(eq(fcpStatementBatches.root, root))
+    .select({ root: statementBatches.root })
+    .from(statementBatches)
+    .where(eq(statementBatches.root, root))
     .limit(1);
 
   return rows.length > 0;
@@ -98,7 +94,7 @@ export async function insertStatementBatchRoot(input: {
   url: string;
 }): Promise<void> {
   await db
-    .insert(fcpStatementBatches)
+    .insert(statementBatches)
     .values({
       root: input.root,
       repoId: input.repoId,
@@ -106,17 +102,17 @@ export async function insertStatementBatchRoot(input: {
       githubRun: input.githubRun,
       url: input.url,
     })
-    .onConflictDoNothing({ target: fcpStatementBatches.root });
+    .onConflictDoNothing({ target: statementBatches.root });
 }
 
 export async function upsertRawIdentifiers(rows: RawIdentifierUpsertRow[]): Promise<void> {
   if (rows.length === 0) return;
 
   await db
-    .insert(fcpRawIdentifiers)
+    .insert(rawIdentifiers)
     .values(rows)
     .onConflictDoUpdate({
-      target: fcpRawIdentifiers.identifierFingerprint,
+      target: rawIdentifiers.identifierFingerprint,
       set: {
         rawIdentifier: sql`excluded.raw_identifier`,
       },
@@ -127,30 +123,30 @@ export async function upsertStatements(rows: StatementUpsertRow[]): Promise<void
   if (rows.length === 0) return;
 
   await db
-    .insert(fcpStatements)
+    .insert(statements)
     .values(rows)
-    .onConflictDoNothing({ target: fcpStatements.statementFingerprint });
+    .onConflictDoNothing({ target: statements.statementFingerprint });
 }
 
 export async function linkStatementsToBatch(batchRoot: string, statementFingerprints: string[]): Promise<void> {
   if (statementFingerprints.length === 0) return;
 
   await db
-    .insert(fcpStatementBatchItems)
+    .insert(statementBatchItems)
     .values(statementFingerprints.map((statementFingerprint) => ({
       batchRoot,
       statementFingerprint,
     })))
     .onConflictDoNothing({
-      target: [fcpStatementBatchItems.batchRoot, fcpStatementBatchItems.statementFingerprint],
+      target: [statementBatchItems.batchRoot, statementBatchItems.statementFingerprint],
     });
 }
 
 export async function listBatchStatementFingerprints(batchRoot: string): Promise<string[]> {
   const rows = await db
-    .select({ statementFingerprint: fcpStatementBatchItems.statementFingerprint })
-    .from(fcpStatementBatchItems)
-    .where(eq(fcpStatementBatchItems.batchRoot, batchRoot));
+    .select({ statementFingerprint: statementBatchItems.statementFingerprint })
+    .from(statementBatchItems)
+    .where(eq(statementBatchItems.batchRoot, batchRoot));
 
   return rows.map((row) => row.statementFingerprint);
 }

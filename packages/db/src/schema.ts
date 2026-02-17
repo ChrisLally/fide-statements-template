@@ -1,27 +1,25 @@
-import { boolean, char, index, pgTable, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
+import { boolean, char, index, pgTable, primaryKey, text, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
 
-export const fcpRawIdentifiers = pgTable('fcp_raw_identifiers', {
+export const rawIdentifiers = pgTable('raw_identifiers', {
   identifierFingerprint: char('identifier_fingerprint', { length: 38 }).primaryKey(),
   rawIdentifier: text('raw_identifier').notNull(),
 }, (table) => ({
   rawIdentifierIdx: index('idx_raw_identifiers_raw').on(table.rawIdentifier),
 }));
 
-export const fcpStatements = pgTable('fcp_statements', {
+export const statements = pgTable('statements', {
   statementFingerprint: char('statement_fingerprint', { length: 38 }).primaryKey(),
   firstCreatedAt: timestamp('first_created_at', { withTimezone: true }).notNull().defaultNow(),
   subjectType: char('subject_type', { length: 1 }).notNull(),
   subjectSourceType: char('subject_source_type', { length: 1 }).notNull(),
   subjectFingerprint: char('subject_fingerprint', { length: 38 }).notNull(),
   predicateFingerprint: char('predicate_fingerprint', { length: 38 }).notNull(),
-  predicateType: char('predicate_type', { length: 1 }).notNull(),
-  predicateSourceType: char('predicate_source_type', { length: 1 }).notNull(),
   objectType: char('object_type', { length: 1 }).notNull(),
   objectSourceType: char('object_source_type', { length: 1 }).notNull(),
   objectFingerprint: char('object_fingerprint', { length: 38 }).notNull(),
 });
 
-export const fcpStatementBatches = pgTable('fcp_statement_batches', {
+export const statementBatches = pgTable('statement_batches', {
   root: char('root', { length: 64 }).primaryKey(),
   repoId: text('repo_id').notNull(),
   ownerId: text('owner_id').notNull(),
@@ -30,18 +28,50 @@ export const fcpStatementBatches = pgTable('fcp_statement_batches', {
   firstSeenAt: timestamp('first_seen_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const fcpStatementBatchItems = pgTable('fcp_statement_batch_items', {
+export const statementBatchItems = pgTable('statement_batch_items', {
   batchRoot: char('batch_root', { length: 64 })
     .notNull()
-    .references(() => fcpStatementBatches.root, { onDelete: 'cascade' }),
+    .references(() => statementBatches.root, { onDelete: 'cascade' }),
   statementFingerprint: char('statement_fingerprint', { length: 38 })
     .notNull()
-    .references(() => fcpStatements.statementFingerprint, { onDelete: 'cascade' }),
+    .references(() => statements.statementFingerprint, { onDelete: 'cascade' }),
   indexedAt: timestamp('indexed_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
-  batchStmtUniqueIdx: uniqueIndex('idx_fcp_statement_batch_items_unique').on(
+  batchStmtUniqueIdx: uniqueIndex('idx_statement_batch_items_unique').on(
     table.batchRoot,
     table.statementFingerprint
+  ),
+}));
+
+export const identityResolutions = pgTable('identity_resolutions', {
+  subjectType: char('subject_type', { length: 1 }).notNull(),
+  subjectSourceType: char('subject_source_type', { length: 1 }).notNull(),
+  subjectFingerprint: char('subject_fingerprint', { length: 38 }).notNull(),
+  resolvedFingerprint: char('resolved_fingerprint', { length: 38 }).notNull(),
+  resolvedFirstCreatedAt: timestamp('resolved_first_created_at', { withTimezone: true }).notNull(),
+  methodVersion: text('method_version').notNull(),
+  runId: text('run_id').notNull(),
+  computedAt: timestamp('computed_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  pk: primaryKey({
+    name: 'pk_identity_resolutions',
+    columns: [
+      table.subjectType,
+      table.subjectSourceType,
+      table.subjectFingerprint,
+    ],
+  }),
+  subjectIdx: index('idx_identity_resolutions_subject').on(
+    table.subjectType,
+    table.subjectSourceType,
+    table.subjectFingerprint
+  ),
+  resolvedIdx: index('idx_identity_resolutions_resolved').on(
+    table.subjectType,
+    table.resolvedFingerprint
+  ),
+  resolvedFirstCreatedAtIdx: index('idx_identity_resolutions_resolved_first_created_at').on(
+    table.resolvedFirstCreatedAt
   ),
 }));
 
