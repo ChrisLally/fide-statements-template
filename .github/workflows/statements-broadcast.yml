@@ -1,4 +1,4 @@
-name: Fide Statements Webhook
+name: Fide Statements Broadcast
 
 on:
   workflow_dispatch:
@@ -7,7 +7,7 @@ on:
       - main
     paths:
       - ".fide/statements/**"
-      - ".github/workflows/statements-webhook.yml"
+      - ".github/workflows/statements-broadcast.yml"
 
 permissions:
   contents: read
@@ -17,6 +17,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - name: Attest Build Provenance
+        uses: actions/attest-build-provenance@v3.2.0
+        
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -86,7 +89,7 @@ jobs:
         shell: bash
         env:
           WEBHOOK_URL: ${{ secrets.FIDE_WEBHOOK_URL }}
-          WEBHOOK_URL_FALLBACK: https://api.fide.work/graph/v1/webhooks/statements
+          WEBHOOK_URL_FALLBACK: https://api.fide.work/graph/v1/broadcast/statements
         run: |
           set -euo pipefail
 
@@ -106,20 +109,22 @@ jobs:
             sha256="$(sha256sum "${path}" | awk '{print $1}')"
             root="$(basename "${path}" .jsonl)"
             items="$(jq -c \
-              --arg path "${path}" \
+              --arg urlPath "${path}" \
               --arg root "${root}" \
               --arg sha256 "${sha256}" \
-              '. + [{path:$path, root:$root, sha256:$sha256}]' <<<"${items}")"
+              '. + [{urlPath:$urlPath, root:$root, sha256:$sha256}]' <<<"${items}")"
           done <<< "${{ steps.changes.outputs.files }}"
 
           payload="$(jq -n \
-            --arg repo "${{ github.repository }}" \
+            --arg kind "github" \
+            --arg repoSlug "${{ github.repository }}" \
+            --arg urlBase "https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}" \
             --arg repoId "${{ github.repository_id }}" \
             --arg ownerId "${{ github.repository_owner_id }}" \
             --arg sha "${{ github.sha }}" \
             --arg runId "${{ github.run_id }}" \
             --argjson items "${items}" \
-            '{repo:$repo, repoId:$repoId, ownerId:$ownerId, sha:$sha, runId:$runId, items:$items}')"
+            '{urlBase:$urlBase, metadata:{kind:$kind, repoSlug:$repoSlug, repoId:$repoId, ownerId:$ownerId, sha:$sha, runId:$runId}, items:$items}')"
 
           webhook_resp_file="$(mktemp)"
           webhook_status="$(curl -sS -o "${webhook_resp_file}" -w "%{http_code}" -X POST \

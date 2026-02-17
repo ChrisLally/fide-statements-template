@@ -21,7 +21,7 @@ pnpm demo:fide-statements-template:trigger:evaluation
 
 Workflow file:
 
-- `.github/workflows/statements-webhook.yml`
+- `.github/workflows/statements-broadcast.yml`
 - `.github/workflows/evaluations.yml`
 
 Required secret:
@@ -34,14 +34,14 @@ Behavior:
 - Triggers on pushes touching `.fide/statements/**`
 - Processes only newly added `*.jsonl` files
 - Fails if statement files are modified/deleted/renamed
-- Sends `repo`, `sha`, `runId`, and `items[]` (`path`, `root`, `sha256`) to webhook
+- Sends top-level `urlBase`, `metadata`, and `items[]` (`urlPath`, `root`, `sha256`) to broadcast endpoint
 
 ## Evaluations workflow (API-only trigger)
 
 - `evaluations.yml` is `workflow_dispatch` only
 - Runs `evaluate:sameas` to emit evaluation event + citation statements into `.fide/statements/**`
 - Optionally commits and pushes generated files (default: on)
-- The push then triggers `statements-webhook.yml`
+- The push then triggers `statements-broadcast.yml`
 
 ### Local trigger helper
 
