@@ -50,7 +50,7 @@ async function main() {
     },
     {
       subject: {
-        rawIdentifier: "https://x.com/jeffbezos1",
+        rawIdentifier: "https://x.com/jeffbezos",
         entityType: "Person",
         sourceType: "Product",
       },
@@ -67,7 +67,7 @@ async function main() {
     },
     {
       subject: {
-        rawIdentifier: "https://x.com/jeffbezos1",
+        rawIdentifier: "https://x.com/jeffbezos",
         entityType: "Person",
         sourceType: "Product",
       },
