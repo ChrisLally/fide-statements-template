@@ -65,7 +65,7 @@ jobs:
           git config user.name "fide-evaluations-bot"
           git config user.email "fide-evaluations-bot@users.noreply.github.com"
 
-          if git diff --quiet -- ".fide/statements"; then
+          if [ -z "$(git status --porcelain -- .fide/statements)" ]; then
             echo "No statement batch changes to commit."
             exit 0
           fi
