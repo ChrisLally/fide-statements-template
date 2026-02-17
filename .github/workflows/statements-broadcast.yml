@@ -11,6 +11,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write
   
 
 jobs:
@@ -87,7 +88,9 @@ jobs:
         shell: bash
         env:
           WEBHOOK_URL: ${{ secrets.FIDE_WEBHOOK_URL }}
+          WEBHOOK_API_KEY: ${{ secrets.FIDE_WEBHOOK_API_KEY }}
           WEBHOOK_URL_FALLBACK: https://api.fide.work/graph/v1/broadcast/statements
+          OIDC_AUDIENCE: fide-graph-broadcast
         run: |
           set -euo pipefail
 
@@ -124,9 +127,30 @@ jobs:
             --argjson items "${items}" \
             '{urlBase:$urlBase, metadata:{kind:$kind, repoSlug:$repoSlug, repoId:$repoId, ownerId:$ownerId, sha:$sha, runId:$runId}, items:$items}')"
 
+          oidc_token=""
+          if [ -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ] && [ -n "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ]; then
+            oidc_resp="$(curl -sS \
+              -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+              "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${OIDC_AUDIENCE}")"
+            oidc_token="$(jq -r '.value // empty' <<<"${oidc_resp}")"
+          fi
+
+          if [ -z "${oidc_token}" ] && [ -z "${WEBHOOK_API_KEY:-}" ]; then
+            echo "Missing auth for broadcast request: no OIDC token and no FIDE_WEBHOOK_API_KEY secret."
+            exit 1
+          fi
+
+          curl_headers=(-H "Content-Type: application/json")
+          if [ -n "${oidc_token}" ]; then
+            curl_headers+=(-H "Authorization: Bearer ${oidc_token}")
+          fi
+          if [ -n "${WEBHOOK_API_KEY:-}" ]; then
+            curl_headers+=(-H "X-API-Key: ${WEBHOOK_API_KEY}")
+          fi
+
           webhook_resp_file="$(mktemp)"
           webhook_status="$(curl -sS -o "${webhook_resp_file}" -w "%{http_code}" -X POST \
-            -H "Content-Type: application/json" \
+            "${curl_headers[@]}" \
             --data "${payload}" \
             "${WEBHOOK_URL}")"
 
