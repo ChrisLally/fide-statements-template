@@ -1,6 +1,6 @@
 {
   "name": "@fide.work/fcp",
-  "version": "0.0.1",
+  "version": "0.0.1-alpha.0",
   "description": "Fide Context Protocol SDK (v0)",
   "license": "Apache-2.0",
   "repository": {
@@ -33,6 +33,9 @@
     "dist",
     "README.md"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check-types": "tsc --noEmit",
