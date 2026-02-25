@@ -1,0 +1,18 @@
+{
+  "name": "fide-statements-template",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Fide Context Protocol statements template — publish .fide/statements and optionally dispatch external evaluation workflows.",
+  "scripts": {
+    "trigger:evaluation": "tsx src/scripts/trigger-evaluation.ts"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.17",
+    "tsx": "^4.7.1",
+    "typescript": "^5.8.3"
+  }
+}

@@ -1,0 +1,162 @@
+name: Fide Statements Broadcast
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".fide/statements/**"
+      - ".github/workflows/statements-broadcast.yml"
+
+permissions:
+  contents: read
+  id-token: write
+  
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect statement files
+        id: changes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ "${{ github.event_name }}" = "push" ]; then
+            before="${{ github.event.before }}"
+            after="${{ github.sha }}"
+            if [ -z "${before}" ] || [ "${before}" = "0000000000000000000000000000000000000000" ]; then
+              before="$(git rev-list --max-parents=0 HEAD | tail -n 1)"
+            fi
+          else
+            before="$(git rev-parse HEAD~1)"
+            after="$(git rev-parse HEAD)"
+          fi
+
+          mapfile -t lines < <(git diff --name-status "${before}" "${after}" -- ".fide/statements")
+          added=()
+          invalid=()
+          for line in "${lines[@]}"; do
+            status="$(awk '{print $1}' <<<"${line}")"
+            path="$(awk '{print $2}' <<<"${line}")"
+            if [[ "${path}" != *.jsonl ]]; then
+              continue
+            fi
+            if [ "${status}" = "A" ]; then
+              added+=("${path}")
+            else
+              invalid+=("${line}")
+            fi
+          done
+
+          # Keep old additive-only check as observability, but do not fail on it.
+          if [ "${#invalid[@]}" -gt 0 ] && [ "${#added[@]}" -eq 0 ]; then
+            echo "Old policy result: FAIL (non-additive changes with no newly added files)."
+          elif [ "${#invalid[@]}" -gt 0 ] && [ "${#added[@]}" -gt 0 ]; then
+            echo "Old policy result: PASS with warnings (mixed additive + non-additive changes)."
+            printf '  %s\n' "${invalid[@]}"
+          elif [ "${#added[@]}" -gt 0 ]; then
+            echo "Old policy result: PASS (additive-only statement changes)."
+          else
+            echo "Old policy result: no statement changes in diff range."
+          fi
+
+          mapfile -t all_files < <(find .fide/statements -type f -name '*.jsonl' 2>/dev/null | sed 's|^\./||' | sort)
+          if [ "${#all_files[@]}" -eq 0 ]; then
+            echo "No statement batch files found in repository."
+            echo "has_new=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "has_new=true" >> "$GITHUB_OUTPUT"
+          {
+            echo "files<<EOF"
+            printf '%s\n' "${all_files[@]}"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Broadcast statement batches
+        if: steps.changes.outputs.has_new == 'true'
+        shell: bash
+        env:
+          BROADCAST_URL: ${{ secrets.FIDE_BROADCAST_URL }}
+          BROADCAST_API_KEY: ${{ secrets.FIDE_BROADCAST_API_KEY }}
+          BROADCAST_URL_FALLBACK: https://api.fide.work/graph/v1/broadcast/statements
+          OIDC_AUDIENCE: fide-graph-broadcast
+        run: |
+          set -euo pipefail
+
+          if [ -z "${BROADCAST_URL}" ]; then
+            BROADCAST_URL="${BROADCAST_URL_FALLBACK}"
+            echo "FIDE_BROADCAST_URL not set, using fallback broadcast URL."
+          fi
+
+          items='[]'
+          while IFS= read -r path; do
+            [ -z "${path}" ] && continue
+            sha256="$(sha256sum "${path}" | awk '{print $1}')"
+            root="$(basename "${path}" .jsonl)"
+            items="$(jq -c \
+              --arg urlPath "${path}" \
+              --arg root "${root}" \
+              --arg sha256 "${sha256}" \
+              '. + [{urlPath:$urlPath, root:$root, sha256:$sha256}]' <<<"${items}")"
+          done <<< "${{ steps.changes.outputs.files }}"
+
+          payload="$(jq -n \
+            --arg kind "github" \
+            --arg repoSlug "${{ github.repository }}" \
+            --arg urlBase "https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}" \
+            --arg repoId "${{ github.repository_id }}" \
+            --arg ownerId "${{ github.repository_owner_id }}" \
+            --arg sha "${{ github.sha }}" \
+            --arg runId "${{ github.run_id }}" \
+            --argjson items "${items}" \
+            '{urlBase:$urlBase, metadata:{kind:$kind, repoSlug:$repoSlug, repoId:$repoId, ownerId:$ownerId, sha:$sha, runId:$runId}, items:$items}')"
+
+          oidc_token=""
+          if [ -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ] && [ -n "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ]; then
+            oidc_resp="$(curl -sS \
+              -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+              "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=${OIDC_AUDIENCE}")"
+            oidc_token="$(jq -r '.value // empty' <<<"${oidc_resp}")"
+          fi
+
+          if [ -z "${oidc_token}" ] && [ -z "${BROADCAST_API_KEY:-}" ]; then
+            echo "Missing auth for broadcast request: no OIDC token and no FIDE_BROADCAST_API_KEY secret."
+            exit 1
+          fi
+
+          curl_headers=(-H "Content-Type: application/json")
+          if [ -n "${oidc_token}" ]; then
+            curl_headers+=(-H "Authorization: Bearer ${oidc_token}")
+          fi
+          if [ -n "${BROADCAST_API_KEY:-}" ]; then
+            curl_headers+=(-H "X-API-Key: ${BROADCAST_API_KEY}")
+          fi
+
+          broadcast_resp_file="$(mktemp)"
+          broadcast_status="$(curl -sS -o "${broadcast_resp_file}" -w "%{http_code}" -X POST \
+            "${curl_headers[@]}" \
+            --data "${payload}" \
+            "${BROADCAST_URL}")"
+
+          echo "Broadcast URL: ${BROADCAST_URL}"
+          echo "Broadcast status: ${broadcast_status}"
+          echo "Broadcast response body:"
+          cat "${broadcast_resp_file}"
+
+          if [ "${broadcast_status}" -lt 200 ] || [ "${broadcast_status}" -ge 300 ]; then
+            echo "Broadcast request failed with HTTP ${broadcast_status}"
+            exit 1
+          fi
+
+          echo "Broadcast sent with $(jq -r 'length' <<<"${items}") item(s)."

@@ -1,0 +1,106 @@
+name: Fide Evaluation Run
+
+on:
+  workflow_dispatch:
+    inputs:
+      method_id:
+        description: "Optional methodId override (defaults to first installed in .fide/evaluation-methods/index.json)"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      TEMPLATE_ROOT: examples/fide-statements-template
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      METHOD_ID_OVERRIDE: ${{ inputs.method_id }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Assert DATABASE_URL
+        run: |
+          if [ -z "${DATABASE_URL}" ]; then
+            echo "Missing DATABASE_URL secret."
+            exit 1
+          fi
+
+      - name: Build runtime packages
+        run: |
+          pnpm --filter @fide-work/cli... build
+
+      - name: Resolve method from .fide index
+        id: method
+        shell: bash
+        run: |
+          set -euo pipefail
+          index_path="${TEMPLATE_ROOT}/.fide/evaluation-methods/index.json"
+          if [ ! -f "${index_path}" ]; then
+            echo "Missing ${index_path}. Install a method first: fide eval-methods add --method <id>"
+            exit 1
+          fi
+
+          method_id="${METHOD_ID_OVERRIDE:-}"
+          if [ -z "${method_id}" ]; then
+            method_id="$(node -e "const fs=require('fs');const p=process.argv[1];const d=JSON.parse(fs.readFileSync(p,'utf8'));if(!d.methods||d.methods.length===0){process.exit(2)};process.stdout.write(d.methods[0].methodId);" "${index_path}")"
+          fi
+
+          if [ -z "${method_id}" ]; then
+            echo "Could not resolve method id."
+            exit 1
+          fi
+
+          echo "method_id=${method_id}" >> "$GITHUB_OUTPUT"
+          echo "Using method: ${method_id}"
+
+      - name: Build evaluation input from DB
+        run: |
+          mkdir -p _scratch/evals/workflow
+          node packages/cli/dist/bin/fide.js eval sameas-input \
+            --out _scratch/evals/workflow/input.json \
+            --jsonl-out _scratch/evals/workflow/input.jsonl
+
+      - name: Run evaluation
+        run: |
+          node packages/cli/dist/bin/fide.js eval run \
+            --in _scratch/evals/workflow/input.json \
+            --method "${{ steps.method.outputs.method_id }}" \
+            --out _scratch/evals/workflow/result.json \
+            --json
+
+      - name: Emit evaluation statements
+        run: |
+          node packages/cli/dist/bin/fide.js eval emit-statements \
+            --in _scratch/evals/workflow/result.json \
+            --decision all \
+            --out _scratch/evals/workflow/emitted.jsonl \
+            --json
+
+      - name: Upload evaluation artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: fide-eval-${{ github.run_id }}
+          path: |
+            _scratch/evals/workflow/input.json
+            _scratch/evals/workflow/input.jsonl
+            _scratch/evals/workflow/result.json
+            _scratch/evals/workflow/emitted.jsonl
