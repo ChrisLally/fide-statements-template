@@ -1,0 +1,38 @@
+[
+  {
+    "subject": "https://x.com/chrislally",
+    "subjectType": "Person",
+    "subjectSource": "NetworkResource",
+    "predicate": "https://schema.org/alternateName",
+    "object": "chrislally",
+    "objectType": "TextLiteral",
+    "objectSource": "TextLiteral"
+  },
+  {
+    "subject": "https://x.com/chrislally",
+    "subjectType": "Person",
+    "subjectSource": "NetworkResource",
+    "predicate": "https://schema.org/sameAs",
+    "object": "https://github.com/ChrisLally",
+    "objectType": "Person",
+    "objectSource": "NetworkResource"
+  },
+  {
+    "subject": "https://x.com/chrislally",
+    "subjectType": "Person",
+    "subjectSource": "NetworkResource",
+    "predicate": "https://schema.org/worksFor",
+    "object": "https://fide.work",
+    "objectType": "Organization",
+    "objectSource": "NetworkResource"
+  },
+  {
+    "subject": "https://x.com/chrislally",
+    "subjectType": "Person",
+    "subjectSource": "NetworkResource",
+    "predicate": "https://schema.org/knowsAbout",
+    "object": "Identity Resolution",
+    "objectType": "TextLiteral",
+    "objectSource": "TextLiteral"
+  }
+]

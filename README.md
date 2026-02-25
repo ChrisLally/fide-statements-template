@@ -37,8 +37,8 @@ Secrets:
 
 Behavior:
 
-- Triggered manually or via GitHub API (`workflow_dispatch`) only
-- Broadcasts discovered `*.jsonl` files with `urlBase`, `metadata`, and `items[]` (`urlPath`, `root`, `sha256`)
+- Triggered on pushes touching `.fide/statements/**`
+- Broadcasts only newly added `*.jsonl` files in the push diff with `urlBase`, `metadata`, and `items[]` (`urlPath`, `root`, `sha256`)
 
 ## Evaluation Workflow (In-Repo)
 

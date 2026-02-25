@@ -43,7 +43,6 @@ jobs:
 
           mapfile -t lines < <(git diff --name-status "${before}" "${after}" -- ".fide/statements")
           added=()
-          invalid=()
           for line in "${lines[@]}"; do
             status="$(awk '{print $1}' <<<"${line}")"
             path="$(awk '{print $2}' <<<"${line}")"
@@ -52,34 +51,24 @@ jobs:
             fi
             if [ "${status}" = "A" ]; then
               added+=("${path}")
-            else
-              invalid+=("${line}")
             fi
           done
 
-          # Keep old additive-only check as observability, but do not fail on it.
-          if [ "${#invalid[@]}" -gt 0 ] && [ "${#added[@]}" -eq 0 ]; then
-            echo "Old policy result: FAIL (non-additive changes with no newly added files)."
-          elif [ "${#invalid[@]}" -gt 0 ] && [ "${#added[@]}" -gt 0 ]; then
-            echo "Old policy result: PASS with warnings (mixed additive + non-additive changes)."
-            printf '  %s\n' "${invalid[@]}"
-          elif [ "${#added[@]}" -gt 0 ]; then
-            echo "Old policy result: PASS (additive-only statement changes)."
-          else
-            echo "Old policy result: no statement changes in diff range."
-          fi
-
-          mapfile -t all_files < <(find .fide/statements -type f -name '*.jsonl' 2>/dev/null | sed 's|^\./||' | sort)
-          if [ "${#all_files[@]}" -eq 0 ]; then
-            echo "No statement batch files found in repository."
+          if [ "${#added[@]}" -eq 0 ]; then
+            echo "No newly added statement batch files in diff range."
             echo "has_new=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
+          printf '%s\n' "${added[@]}" | sort -u > /tmp/fide_added_batches.txt
+          mapfile -t added_unique < /tmp/fide_added_batches.txt
+          echo "Newly added statement batches:"
+          printf '  %s\n' "${added_unique[@]}"
+
           echo "has_new=true" >> "$GITHUB_OUTPUT"
           {
             echo "files<<EOF"
-            printf '%s\n' "${all_files[@]}"
+            printf '%s\n' "${added_unique[@]}"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
@@ -159,4 +148,4 @@ jobs:
             exit 1
           fi
 
-          echo "Broadcast sent with $(jq -r 'length' <<<"${items}") item(s)."
+          echo "Broadcast sent with $(jq -r 'length' <<<"${items}") newly added item(s)."
